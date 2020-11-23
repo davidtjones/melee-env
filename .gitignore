@@ -139,8 +139,8 @@ cython_debug/
 
 src.egg-info/*
 src/squashfs-root/*
-src/training/dataset/slp-dataset/training_data/*
-src/training/dataset/slp-dataset/melee_public_slp_dataset_v2.7z
+src/ai/dataset/slp-dataset/training_data/*
+src/ai/training/dataset/slp-dataset/melee_public_slp_dataset_v2.7z
 *Slippi_Online-x86_64.AppImage*
 *squashfs-root*
 src/User/*
