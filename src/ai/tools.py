@@ -75,9 +75,12 @@ class ActionSpace:
                                        [0.0, 1.0]])   # up
 
         
-        # the main control stick is slightly harder as there isn't a simple
-        # square stick box, so some calculation is needed to find legal values
-        self.stick_values = np.linspace(-1, 1, 2**4)  # sticks are 8 bit axes
+        # The main control stick is slightly harder as there isn't a simple
+        #   square stick box, so some calculation is needed to find legal 
+        #   values. Also of note, the space of values of the stick needs to
+        #   include no-op, so an odd value must be used on the number of 
+        #   steps. 
+        self.stick_values = np.linspace(-1, 1, (2**3)-1)
         
         # create tuples of all possible stick values:
         self.stick_space_square = np.array(
