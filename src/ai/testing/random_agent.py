@@ -1,11 +1,15 @@
 from src.config.project import Project
-from src.ai.tools.action_space import ActionSpace, ControlState
+from src.ai.tools import ActionSpace, ControlState
 import melee
 
 p = Project()
+p.set_ff(False)
 
 # Setup Console
-console = melee.Console(path=str(p.slippi_bin))
+console = melee.Console(
+    path=str(p.slippi_bin),
+    blocking_input=True,
+)
 
 # Setup Controllers
 controller_ai = melee.Controller(console=console, port=1)
@@ -19,8 +23,6 @@ controller_cpu.connect()
 
 # Get the actions available to our agent
 asp = ActionSpace()
-
-input("Press Enter to start the magic!")
 
 while True:
 
@@ -47,9 +49,12 @@ while True:
 
     elif gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
         # choose random actions
+        print("generating actions")
         action = asp.generate_random_control_state()
+        print("executing actions")
         action.execute(controller_ai)
-        pass
+        print("finished")
+        
 
     else:
         melee.MenuHelper.choose_versus_mode(gamestate, controller_ai)

@@ -21,14 +21,15 @@ cwd = Path(os.getcwd())
 if (cwd / "Slippi/squashfs-root").exists():
     config_path = cwd / "config"
     cwd_str = str(cwd.absolute())
-    with open(config_path / 'config.json', 'w') as fp:
+    with open(config_path / 'config.py', 'w') as fp:
         if not iso:
            data = {"root": cwd_str}
         else:  
            data = {"root": cwd_str,
                    "iso" : args.iso}
         print(data)
-        json.dump(data, fp, sort_keys=True, indent=4)
+        write_string = f"project_info = {data}"
+        fp.write(write_string)
 
 else:
     exit("Error: Cannot find squashfs-root. Please ensure that genconfig is " \

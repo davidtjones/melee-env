@@ -1,6 +1,11 @@
 actor-critic bot
 ---
 
+## About
+This bot runs actor-critic. One of the key elements of any reinforcement-learning agent is the reward signal received at each time step. 
+
+Current reward signal: (damage dealt) - (damage taken) + 100*(stocks taken) - 100*(stocks lost)
+
 ## Setup
 You must have your own copy of Super Smash Bros Melee as well as the Slippi Online AppImage (get started here: https://slippi.gg). Move the AppImage into `src/Slippi`. Additional setup has been mostly automated: 
 

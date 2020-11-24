@@ -1,0 +1,1 @@
+project_info = {'root': '/home/david/bin/python/660/ac-bot/src', 'iso': '/home/david/Games/roms/Super Smash Bros. Melee (USA) (En,Ja) (v1.02).iso'}

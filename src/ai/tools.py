@@ -26,6 +26,9 @@ So an action will be a vector:
 
 [ A, B, X, Y, Z, LT, RT, CS_X, CS_Y, MS_X, MS_Y ]
 
+In addition to this encoding, there needs to be an easily accessible view into
+the current state for the game. 
+
 """
 
 import numpy as np
@@ -56,12 +59,13 @@ class ControlState:
 
         controller.tilt_analog_unit(melee.enums.Button.BUTTON_MAIN, 
                                     self.state[9], self.state[10]) 
+        controller.flush()
 
 class ActionSpace:
     def __init__(self):
         self.button_space = np.array([0.0, 1.0])
         self.shoulder_space = np.array([0.0,          # none
-                                        0.1,          # light press
+                                        0.25,         # light press
                                         1.0])         # hard press    
         
         self.c_stick_space = np.array([[0.0, 0.0],    # center
@@ -73,21 +77,25 @@ class ActionSpace:
         
         # the main control stick is slightly harder as there isn't a simple
         # square stick box, so some calculation is needed to find legal values
-        self.stick_values = np.linspace(-1, 1, 2**8)  # maybe reduce later
+        self.stick_values = np.linspace(-1, 1, 2**4)  # sticks are 8 bit axes
         
         # create tuples of all possible stick values:
         self.stick_space_square = np.array(
             np.meshgrid(self.stick_values, self.stick_values)).T.reshape(-1, 2)
 
         # These contain illegal values in a circular stick box, you can never
-        # achieve (1,1), for example. For any values a and b,  a^2 + b^2 > 1 
-        # are thus illegal. 
+        #   achieve (1,1), for example. For any values a and b,  a^2 + b^2 > 1 
+        #   are thus illegal. 
 
         dist = np.sqrt(
             self.stick_space_square[:, 0]**2 + self.stick_space_square[:, 1]**2)
         legal_indices = np.where(dist <= 1)
 
         self.stick_space_circle = self.stick_space_square[legal_indices]
+
+        # Action space size is the length of the "action vector." Four buttons
+        #   plus two shoulders plus four stick axes is 10.
+        self.size = 10
 
     def sample_main_stick(self):
         return self.stick_space_circle[np.random.choice(len(self.stick_space_circle))]
@@ -102,7 +110,9 @@ class ActionSpace:
         return np.random.choice(self.shoulder_space, size=size)
 
     def generate_random_control_state(self):
-        # There are seven buttons, the cstick, two triggers, and the main stick
+        # There are seven buttons, the cstick, two triggers, and the main stick.
+        #   Since this sampling is uniform, certain actions will be far more
+        #   likely than others, e.g., smash attacks on the c-stick
         buttons = self.sample_button(7)
         c_stick = self.sample_c_stick()
         shoulder_l = self.sample_shoulder_trigger()

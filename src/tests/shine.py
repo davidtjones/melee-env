@@ -2,6 +2,8 @@ from src.config.project import Project
 import melee
 
 p = Project()
+p.set_ff(False)
+p.use_vulkan()
 
 # Setup console
 print(str(p.slippi_bin))
@@ -19,8 +21,6 @@ console.connect()
 
 for c in controllers: 
     c.connect()
-
-input("Press Enter to start the magic!")
 
 # Do things
 while True:
