@@ -1,5 +1,6 @@
 from src.config.project import Project
 from src.ai.tools import ActionSpace, ControlState
+import numpy as np
 import melee
 
 p = Project()
@@ -8,7 +9,7 @@ p.set_ff(False)
 # Setup Console
 console = melee.Console(
     path=str(p.slippi_bin),
-    blocking_input=True,
+    #  blocking_input=True,
 )
 
 # Setup Controllers
@@ -49,11 +50,8 @@ while True:
 
     elif gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
         # choose random actions
-        print("generating actions")
-        action = asp.generate_random_control_state()
-        print("executing actions")
+        action = asp(np.random.choice(asp.size))
         action.execute(controller_ai)
-        print("finished")
         
 
     else:

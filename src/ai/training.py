@@ -13,22 +13,26 @@ def train(env, policy, optimizer, discount_factor, device):
     optimizer.zero_grad()
     critic_criterion = nn.SmoothL1Loss()
 
+    log_prob_actions = []
+    values = []
+    rewards = []
+
     # reset to new game
     while gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
         # perform actions
-        gamestate = console.step()
+        gamestate = env['console'].step()
 
-        # preds = policy(gamestate)
-        # action_prob = F.softmax(preds[0], dim=-1)
-        # m = distributions.Categorical(action_prob)
-        # action = m.sample()
-        # log_prob_action = m.log_prob(action)
-        #
-        # state, reward, done, info = env.step(action.item())
+        preds = policy(gamestate)
+        action_prob = F.softmax(preds[0], dim=-1)
+        m = distributions.Categorical(action_prob)
+        action = m.sample()
+        log_prob_action = m.log_prob(action)
+        
+        state, reward, done, info = env.step(action.item())
 
-        # log_prob_actions.append(log_prob_action)
-        # values.append(preds[1])
-        # rewards.append(reward)
+        log_prob_actions.append(log_prob_action)
+        values.append(preds[1])
+        rewards.append(reward)
 
 
     # we are no longer in a game but still in training

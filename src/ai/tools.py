@@ -22,10 +22,6 @@ no movement.
 
 The c-stick has no other real function except for the full cardinal directions.
 
-So an action will be a vector:
-
-[ A, B, X, Y, Z, LT, RT, CS_X, CS_Y, MS_X, MS_Y ]
-
 In addition to this encoding, there needs to be an easily accessible view into
 the current state for the game. 
 
@@ -34,38 +30,12 @@ the current state for the game.
 import numpy as np
 import melee
 
-class ControlState:
-    def __init__(self, state):
-        self.state = state
-        self.button_order = [
-            melee.enums.Button.BUTTON_A,
-            melee.enums.Button.BUTTON_B,
-            melee.enums.Button.BUTTON_X,
-            melee.enums.Button.BUTTON_Y,
-            melee.enums.Button.BUTTON_Z]
-
-    def execute(self, controller):
-        for i, button in enumerate(self.button_order):
-            if self.state[i] > 0:
-                controller.press_button(button)
-            else:
-                controller.release_button(button)
-        
-        controller.press_shoulder(melee.enums.Button.BUTTON_L, self.state[5])
-        controller.press_shoulder(melee.enums.Button.BUTTON_R, self.state[6])
-        
-        controller.tilt_analog_unit(melee.enums.Button.BUTTON_C, 
-                                    self.state[7], self.state[8])
-
-        controller.tilt_analog_unit(melee.enums.Button.BUTTON_MAIN, 
-                                    self.state[9], self.state[10]) 
-        controller.flush()
 
 class ActionSpace:
     def __init__(self):
         self.button_space = np.array([0.0, 1.0])
         self.shoulder_space = np.array([0.0,          # none
-                                        0.25,         # light press
+                                        # 0.1,         # light press
                                         1.0])         # hard press    
         
         self.c_stick_space = np.array([[0.0, 0.0],    # center
@@ -96,33 +66,74 @@ class ActionSpace:
 
         self.stick_space_circle = self.stick_space_square[legal_indices]
 
-        # Action space size is the length of the "action vector." Four buttons
-        #   plus two shoulders plus four stick axes is 10.
-        self.size = 10
+        mid = np.sqrt(2)/2
 
-    def sample_main_stick(self):
-        return self.stick_space_circle[np.random.choice(len(self.stick_space_circle))]
+        self.stick_space_reduced = np.array([[0.0, 0.0], # no op
+                                             [0.0, 1.0],
+                                             [mid, mid],
+                                             [1.0, 0.0],
+                                             [mid, -mid],
+                                             [0.0, -1.],
+                                             [-mid, -mid],
+                                             [-1., 0.0],
+                                             [-mid, mid]])
 
-    def sample_c_stick(self):
-        return self.c_stick_space[np.random.choice(len(self.c_stick_space))]
+        self.button_space_reduced = np.array([0., 1., 2., 3., 4.])
 
-    def sample_button(self, size=1):
-        return np.random.choice(self.button_space, size=size)
+        # Action space size is total number of possible actions. In this case,
+        #    is is all possible main stick positions * all c-stick positions *
+        #    all the buttons. A normal controller has ~51040 possible main stick 
+        #    positions. Each trigger has 255 positions. The c-stick can be 
+        #    reduced to ~5 positions. Finally, if all buttons can be pressed
+        #    in any combination, that results in 32 combinations. Not including
+        #    the dpad or start button, that is 51040 * 5 * 255 * 2 * 32 which 
+        #    is a staggering 4.165 billion possible control states. 
 
-    def sample_shoulder_trigger(self, size=1):
-        return np.random.choice(self.shoulder_space, size=size)
+        # Given this, it is reasonable to reduce this. In the above class, the 
+        #    main stick has been reduced to the 8 cardinal positions plus the 
+        #    center (no-op). Only A, B, Z, and R are used, as these correspond
+        #    to major in-game functions (attack, special, grab, shield). Every
+        #    action can theoretically be performed with just these buttons. A 
+        #    final "button" is added for no-op. 
+        #
+        #    Action space = 9 * 5 = 45 possible actions. 
 
-    def generate_random_control_state(self):
-        # There are seven buttons, the cstick, two triggers, and the main stick.
-        #   Since this sampling is uniform, certain actions will be far more
-        #   likely than others, e.g., smash attacks on the c-stick
-        buttons = self.sample_button(7)
-        c_stick = self.sample_c_stick()
-        shoulder_l = self.sample_shoulder_trigger()
-        shoulder_r = self.sample_shoulder_trigger()
-        m_stick = self.sample_main_stick()
-        control_state = np.concatenate((buttons, shoulder_l, shoulder_r, c_stick, m_stick))
+        self.action_space = np.zeros((self.stick_space_reduced.shape[0] * self.button_space_reduced.shape[0], 3))
 
-        return ControlState(control_state)
+        for button in self.button_space_reduced:
+            self.action_space[int(button)*9:(int(button)+1)*9, :2] = self.stick_space_reduced
+            self.action_space[int(button)*9:(int(button)+1)*9, 2] = button
+
+        self.size = self.action_space.shape[0]
+
+
+    def __call__(self, action):
+        if action > self.size - 1:
+            exit("Error: invalid action!")
+
+        return ControlState(self.action_space[action])
+
         
+class ControlState:
+    def __init__(self, state):
+        self.state = state
+        self.buttons = [
+            melee.enums.Button.BUTTON_A,
+            melee.enums.Button.BUTTON_B,
+            melee.enums.Button.BUTTON_R,
+            melee.enums.Button.BUTTON_Z]
+
+    def execute(self, controller):
+        controller.release_all()      # reset everything real quick
+        if self.state[2] != 0.0:      # no-op
+            if self.state[2] != 3.0:  # R shoulder
+                controller.press_button(self.buttons[int(self.state[2])-1]) 
+            else:
+                controller.press_shoulder(melee.enums.Button.BUTTON_R, 1)
         
+        controller.tilt_analog_unit(melee.enums.Button.BUTTON_MAIN, 
+                                    self.state[0], self.state[1]) 
+if __name__ == "__main__":
+    import code
+    asp = ActionSpace()
+    code.interact(local=locals())
