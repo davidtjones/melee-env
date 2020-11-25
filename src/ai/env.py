@@ -29,7 +29,97 @@ the current state for the game.
 
 import numpy as np
 import melee
+from src.config.project import Project
+import code
 
+    
+class MeleeEnv:
+    """
+    model gym
+    """
+    def __init__(self, fast_forward=False):
+        self.project = Project()
+        self.project.set_ff(fast_forward)
+
+        # TODO: pass as argument w/ base class so it's easy to compare
+        #       different action and observation spaces.
+        self.action_space = ActionSpace()  
+        self.observation_space = ObservationSpace()
+        self.gamestate = None
+
+        self.console = melee.Console(
+            path=str(self.project.slippi_bin),
+            #  blocking_input=True)  # broken atm
+        )
+        
+        self.controllers = {
+            'ai': melee.Controller(console=self.console, port=1),
+            'cpu': melee.Controller(console=self.console, port=2)
+            
+        }
+
+        self.console.run(iso_path=self.project.iso)
+        self.console.connect()
+
+        for type, controller in self.controllers.items():
+            controller.connect()
+
+    def setup(self):
+        while True:
+            self.gamestate = self.console.step()
+            if self.gamestate.menu_state is melee.Menu.CHARACTER_SELECT:
+                melee.MenuHelper.choose_character(character=melee.enums.Character.FOX,
+                                                  gamestate=self.gamestate,
+                                                  controller=self.controllers['ai'],
+                                                  costume=2,
+                                                  swag=False,
+                                                  start=False)
+
+                melee.MenuHelper.choose_character(character=melee.enums.Character.FOX,
+                                                  gamestate=self.gamestate,
+                                                  controller=self.controllers['cpu'],
+                                                  cpu_level=1,
+                                                  swag=False,
+                                                  start=True)
+
+            elif self.gamestate.menu_state is melee.Menu.STAGE_SELECT:
+                melee.MenuHelper.choose_stage(stage=melee.enums.Stage.FINAL_DESTINATION,
+                                              gamestate=self.gamestate,
+                                              controller=self.controllers['ai'])
+
+            elif self.gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
+                return None, None, False, None
+
+            else:
+                melee.MenuHelper.choose_versus_mode(self.gamestate, self.controllers['ai'])
+
+
+    def step(self, action=0):
+        if self.gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
+            # execute controller input for selected action:
+            controller_input = self.action_space(action)
+            controller_input.execute(self.controllers['ai'])    
+
+            # step env
+            self.gamestate = self.console.step()
+
+            # get updated observation
+            return self.observation_space(self.gamestate)
+        else:
+            for t, c in self.controllers.items():
+                c.release_all()
+            return None, None, True, None
+
+    
+
+
+class ObservationSpace:
+    def __init__(self):
+        self.size = None
+
+    def __call__(self, gamestate):
+        """ pull out relevant info from gamestate """
+        return gamestate, 0, False, None
 
 class ActionSpace:
     def __init__(self):
@@ -106,6 +196,8 @@ class ActionSpace:
 
         self.size = self.action_space.shape[0]
 
+    def sample(self):
+        return np.random.choice(self.size)
 
     def __call__(self, action):
         if action > self.size - 1:
@@ -113,7 +205,7 @@ class ActionSpace:
 
         return ControlState(self.action_space[action])
 
-        
+
 class ControlState:
     def __init__(self, state):
         self.state = state
@@ -126,13 +218,16 @@ class ControlState:
     def execute(self, controller):
         controller.release_all()      # reset everything real quick
         if self.state[2] != 0.0:      # no-op
-            if self.state[2] != 3.0:  # R shoulder
+            if self.state[2] != 4.0:  # R shoulder
                 controller.press_button(self.buttons[int(self.state[2])-1]) 
             else:
                 controller.press_shoulder(melee.enums.Button.BUTTON_R, 1)
         
         controller.tilt_analog_unit(melee.enums.Button.BUTTON_MAIN, 
-                                    self.state[0], self.state[1]) 
+                                    self.state[0], self.state[1])
+
+
+
 if __name__ == "__main__":
     import code
     asp = ActionSpace()
