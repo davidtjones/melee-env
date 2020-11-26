@@ -1,16 +1,20 @@
-from src.ai.env import MeleeEnv
+from src.ai.MeleeEnv import MeleeEnv
 
 # make the environment
 env = MeleeEnv() 
-action_space_size = env.action_space.size
 
-# initialize the game itself
-observation, reward, done, info = env.setup()
+episodes = 2
 
-while not done:
-    action = env.action_space.sample()
-    observation, reward, done, info = env.step(action)
-    print(f"{observation}, {reward}, {done}, {info}")
+for episode in range(episodes):
+    # get to versus mode and select characters, start match
+    observation, reward, done, info = env.setup()
+    
+    # input actions until the match is finished
+    while not done:
+        action = env.action_space.sample()
+        obs, reward, done, info = env.step(action)
+        print(f"{episode} {obs}, {reward}, {done}, {info}")
+
 print("Complete")
 
 

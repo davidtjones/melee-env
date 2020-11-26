@@ -1,35 +1,6 @@
-"""
-So what is really needed is an encoding from ControllerState to some vector-
-respresentation of the controller. I.e., if given a vector of length N, 
-assigning values to that vector directly corresponds to a controller state.
-
-This can then be used as input/output to the model, etc. 
-
-There are 10 buttons, 5 of which probably shouldn't be used the AI (dpad, start)
-for a total of 5 buttons with binary values (A, B, X, Y, Z). 
-
-Furthermore the shoulder buttons can be divided into two states: hard press 
-and light press. Hard press is a full 255 and light press should be the minimum 
-amount of pressure such that light shield is activated, with an additional 0
-pressure meaning nothing. 
-
-Then there are two analog control sticks. I think the analog sticks are likely
-8 bits on both axes but that is an insane level of detail for a game 
-where only a few levels of detail are needed. Libmelee specifically allows for
-floating point representations on these with ranges of [0, 1] or [-1, 1]. I 
-like the [-1, 1] representation as I think it is the most clear, 0 being 
-no movement. 
-
-The c-stick has no other real function except for the full cardinal directions.
-
-In addition to this encoding, there needs to be an easily accessible view into
-the current state for the game. 
-
-"""
-
+from src.config.project import Project
 import numpy as np
 import melee
-from src.config.project import Project
 import code
 
     
@@ -110,16 +81,89 @@ class MeleeEnv:
                 c.release_all()
             return None, None, True, None
 
-    
-
 
 class ObservationSpace:
     def __init__(self):
         self.size = None
+        self.previous_gamestate = None
+        self.current_gamestate = None
+
+    def get_percents(self):
+        # return a array [(damage done, damage taken)]
+        current = np.array([
+            self.current_gamestate.player[1].percent,
+            self.current_gamestate.player[2].percent])
+        if self.previous_gamestate is not None:
+            previous = np.array([
+                self.previous_gamestate.player[1].percent,
+                self.previous_gamestate.player[2].percent])
+        
+            diff = current - previous
+        else:
+            diff = np.array([0, 0])
+
+        return np.array([diff, current])
+
+    def get_stocks(self):
+        # return a tuple (p1 stocks lost, p2 stocks lost)
+        current = np.array([
+            self.current_gamestate.player[1].stock, 
+            self.current_gamestate.player[2].stock])
+
+        if self.previous_gamestate is not None:
+            previous = np.array([
+                self.previous_gamestate.player[1].stock, 
+                self.previous_gamestate.player[2].stock])
+
+            diff = current - previous
+        else:
+            diff = np.array([0, 0])
+        return np.array([diff, current])
+
+    def get_positions(self):
+        facing = (self.current_gamestate.player[1].facing, 
+                  self.current_gamestate.player[2].facing)
+
+        x = (self.current_gamestate.player[1].x, 
+             self.current_gamestate.player[2].x)
+
+        y = (self.current_gamestate.player[1].y, 
+             self.current_gamestate.player[2].y)
+
+        return np.array([facing, x, y])
+
+    def get_actions(self):
+        action = (self.current_gamestate.player[1].action.value, 
+                  self.current_gamestate.player[2].action.value)
+
+        action_frame = (self.current_gamestate.player[1].action_frame, 
+                        self.current_gamestate.player[2].action_frame)
+        
+        return np.array([action, action_frame])
+        
 
     def __call__(self, gamestate):
         """ pull out relevant info from gamestate """
-        return gamestate, 0, False, None
+        self.current_gamestate = gamestate
+        total_reward = 0
+        
+        stocks = self.get_stocks()
+        percents = self.get_percents()
+        
+        # reward/penalize based on delta damage/stocks
+        total_reward -= 100 * stocks[0][0]
+        total_reward += 100 * stocks[0][1]
+
+        total_reward -= stocks[0][0]
+        total_reward += stocks[0][1]
+
+        position = self.get_positions()
+        actions = self.get_actions()
+
+        self.previous_gamestate = self.current_gamestate
+        done = not (bool(stocks[1][0]) or bool(stocks[1][1]))
+        
+        return (stocks, percents, position, actions), total_reward, done, None
 
 class ActionSpace:
     def __init__(self):
@@ -133,7 +177,6 @@ class ActionSpace:
                                        [0.0, -1.0],   # down
                                        [-1.0, 0.0],   # left
                                        [0.0, 1.0]])   # up
-
         
         # The main control stick is slightly harder as there isn't a simple
         #   square stick box, so some calculation is needed to find legal 
@@ -149,7 +192,6 @@ class ActionSpace:
         # These contain illegal values in a circular stick box, you can never
         #   achieve (1,1), for example. For any values a and b,  a^2 + b^2 > 1 
         #   are thus illegal. 
-
         dist = np.sqrt(
             self.stick_space_square[:, 0]**2 + self.stick_space_square[:, 1]**2)
         legal_indices = np.where(dist <= 1)
@@ -187,7 +229,6 @@ class ActionSpace:
         #    final "button" is added for no-op. 
         #
         #    Action space = 9 * 5 = 45 possible actions. 
-
         self.action_space = np.zeros((self.stick_space_reduced.shape[0] * self.button_space_reduced.shape[0], 3))
 
         for button in self.button_space_reduced:
