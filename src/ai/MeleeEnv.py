@@ -98,7 +98,7 @@ class ObservationSpace:
                 self.previous_gamestate.player[1].percent,
                 self.previous_gamestate.player[2].percent])
         
-            diff = current - previous
+            diff = current - previous  # percents go up
         else:
             diff = np.array([0, 0])
 
@@ -115,7 +115,7 @@ class ObservationSpace:
                 self.previous_gamestate.player[1].stock, 
                 self.previous_gamestate.player[2].stock])
 
-            diff = current - previous
+            diff = previous - current  # stocks go down
         else:
             diff = np.array([0, 0])
         return np.array([diff, current])
@@ -154,8 +154,10 @@ class ObservationSpace:
         total_reward -= 100 * stocks[0][0]
         total_reward += 100 * stocks[0][1]
 
-        total_reward -= stocks[0][0]
-        total_reward += stocks[0][1]
+        # if stocks change, don't reward for going back to 0 damage
+        # assumption: you can't lose more than one stock on a given frame
+        total_reward -= percents[0][0] * (1^stocks[0][0])
+        total_reward += percents[0][1] * (1^stocks[0][1]) 
 
         position = self.get_positions()
         actions = self.get_actions()
