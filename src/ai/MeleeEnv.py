@@ -2,7 +2,7 @@ from src.config.project import Project
 import numpy as np
 import melee
 import code
-
+import time
     
 class MeleeEnv:
     """
@@ -18,6 +18,8 @@ class MeleeEnv:
         self.observation_space = ObservationSpace()
         self.gamestate = None
 
+
+    def start(self):
         self.console = melee.Console(
             path=str(self.project.slippi_bin),
             #  blocking_input=True)  # broken atm
@@ -25,15 +27,16 @@ class MeleeEnv:
         
         self.controllers = {
             'ai': melee.Controller(console=self.console, port=1),
-            'cpu': melee.Controller(console=self.console, port=2)
-            
-        }
+            'cpu': melee.Controller(console=self.console, port=2) }
 
         self.console.run(iso_path=self.project.iso)
         self.console.connect()
 
-        for type, controller in self.controllers.items():
-            controller.connect()
+        for t, c in self.controllers.items():
+            c.connect()
+
+        self.gamestate = self.console.step()
+
 
     def setup(self):
         while True:
@@ -59,7 +62,7 @@ class MeleeEnv:
                                               controller=self.controllers['ai'])
 
             elif self.gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
-                return None, None, False, None
+                return self.observation_space(self.gamestate)
 
             else:
                 melee.MenuHelper.choose_versus_mode(self.gamestate, self.controllers['ai'])
@@ -81,10 +84,20 @@ class MeleeEnv:
                 c.release_all()
             return None, None, True, None
 
+    def stop(self):
+        for t, c in self.controllers.items():
+            c.disconnect()
+        self.gamestate = None
+        self.console.stop()
+        time.sleep(2) 
+
 
 class ObservationSpace:
     def __init__(self):
-        self.size = None
+
+        self.size = 18  # better way to set this?
+        self.current_frame = 0
+        self.done = False
         self.previous_gamestate = None
         self.current_gamestate = None
 
@@ -141,31 +154,40 @@ class ObservationSpace:
         
         return np.array([action, action_frame])
         
-
     def __call__(self, gamestate):
         """ pull out relevant info from gamestate """
         self.current_gamestate = gamestate
+        self.current_frame +=1 
         total_reward = 0
+        info = None
+        stocks = self.get_stocks()      # 2x2
+        percents = self.get_percents()  # 2x2 
         
-        stocks = self.get_stocks()
-        percents = self.get_percents()
-        
-        # reward/penalize based on delta damage/stocks
-        total_reward -= 100 * stocks[0][0]
-        total_reward += 100 * stocks[0][1]
+        if self.current_frame > 85 and not self.done:
+            # reward/penalize based on delta damage/stocks
+            if stocks[0][0] != 0:
+                print("Stock change")
+            if stocks[0][1] != 0:
+                print("stock change")
+            total_reward -= (100 * stocks[0][0])
+            total_reward += (100 * stocks[0][1])
 
-        # if stocks change, don't reward for going back to 0 damage
-        # assumption: you can't lose more than one stock on a given frame
-        total_reward -= percents[0][0] * (1^stocks[0][0])
-        total_reward += percents[0][1] * (1^stocks[0][1]) 
+            # if stocks change, don't reward for going back to 0 damage
+            # assumption: you can't lose more than one stock on a given frame
+            # total_reward -= (percents[0][0] * (1^stocks[0][0]))
+            # total_reward += (percents[0][1] * (1^stocks[0][1]))
 
-        position = self.get_positions()
-        actions = self.get_actions()
+        positions = self.get_positions()  # 3x2
+        actions = self.get_actions()      # 2x2 
 
         self.previous_gamestate = self.current_gamestate
-        done = not (bool(stocks[1][0]) or bool(stocks[1][1]))
+        self.done = not (bool(stocks[1][0]) or bool(stocks[1][1]))
         
-        return (stocks, percents, position, actions), total_reward, done, None
+        observation = np.concatenate((stocks, percents, positions, actions))
+
+
+        return observation, total_reward, self.done, info
+
 
 class ActionSpace:
     def __init__(self):
