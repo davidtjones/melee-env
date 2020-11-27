@@ -163,15 +163,19 @@ class ObservationSpace:
         self.current_frame +=1 
         total_reward = 0
         info = None
+        
         stocks = self.get_stocks()      # 2x2
         percents = self.get_percents()  # 2x2 
+        positions = self.get_positions()  # 3x2
+        actions = self.get_actions()      # 2x2 
         
         if self.current_frame > 85 and not self.done:
             # reward/penalize based on delta damage/stocks
             if stocks[0][0] != 0:
-                print("Stock change")
+                print(f"Stock change {stocks[0][0]}")
             if stocks[0][1] != 0:
-                print("stock change")
+                print(f"stock change {stocks[0][1]}")
+
             total_reward -= (100 * stocks[0][0])
             total_reward += (100 * stocks[0][1])
 
@@ -180,10 +184,11 @@ class ObservationSpace:
             # total_reward -= (percents[0][0] * (1^stocks[0][0]))
             # total_reward += (percents[0][1] * (1^stocks[0][1]))
 
-        positions = self.get_positions()  # 3x2
-        actions = self.get_actions()      # 2x2 
 
-        self.previous_gamestate = self.current_gamestate
+
+        if self.current_gamestate is not None:
+            self.previous_gamestate = self.current_gamestate
+
         self.done = not (bool(stocks[1][0]) or bool(stocks[1][1]))
         
         observation = np.concatenate((stocks, percents, positions, actions))
@@ -293,7 +298,6 @@ class ControlState:
         
         controller.tilt_analog_unit(melee.enums.Button.BUTTON_MAIN, 
                                     self.state[0], self.state[1])
-
 
 
 if __name__ == "__main__":
