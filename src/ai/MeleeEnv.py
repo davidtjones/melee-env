@@ -5,9 +5,6 @@ import code
 import time
     
 class MeleeEnv:
-    """
-    model gym
-    """
     def __init__(self, fast_forward=False):
         self.project = Project()
         self.project.set_ff(fast_forward)
@@ -70,14 +67,12 @@ class MeleeEnv:
 
     def step(self, action=0):
         if self.gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
-            # execute controller input for selected action:
+            
             controller_input = self.action_space(action)
             controller_input.execute(self.controllers['ai'])    
 
-            # step env
             self.gamestate = self.console.step()
 
-            # get updated observation
             return self.observation_space(self.gamestate)
         else:
             for t, c in self.controllers.items():
@@ -85,8 +80,11 @@ class MeleeEnv:
             return None, None, True, None
 
     def stop(self):
+        # once blocking calls are fixed, this can be moved to the end
+        # this can be used to restart the instance. 
         for t, c in self.controllers.items():
             c.disconnect()
+        self.observation_space._reset()
         self.gamestate = None
         self.console.stop()
         time.sleep(2) 
@@ -94,8 +92,13 @@ class MeleeEnv:
 
 class ObservationSpace:
     def __init__(self):
-
         self.size = 18  # better way to set this?
+        self.current_frame = 0
+        self.done = False
+        self.previous_gamestate = None
+        self.current_gamestate = None
+
+    def _reset(self):
         self.current_frame = 0
         self.done = False
         self.previous_gamestate = None
