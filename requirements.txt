@@ -1,9 +1,10 @@
+argon2-cffi @ file:///home/conda/feedstock_root/build_artifacts/argon2-cffi_1605217006479/work
 async-generator==1.10
 attrs @ file:///tmp/build/80754af9/attrs_1600298409949/work
 backcall==0.2.0
 bleach @ file:///tmp/build/80754af9/bleach_1600439572647/work
 certifi==2020.11.8
-cffi==1.14.3
+cffi @ file:///home/conda/feedstock_root/build_artifacts/cffi_1606236118475/work
 chardet==3.0.4
 cryptography==3.2.1
 cycler==0.10.0
@@ -53,7 +54,7 @@ nbconvert @ file:///tmp/build/80754af9/nbconvert_1601914804165/work
 nbformat @ file:///tmp/build/80754af9/nbformat_1602783287752/work
 neovim==0.3.1
 nest-asyncio @ file:///tmp/build/80754af9/nest-asyncio_1601499549014/work
-notebook==6.0.3
+notebook @ file:///home/conda/feedstock_root/build_artifacts/notebook_1605103640761/work
 numpy @ file:///tmp/build/80754af9/numpy_and_numpy_base_1603487797006/work
 olefile==0.46
 packaging==20.4
@@ -68,7 +69,7 @@ prompt-toolkit @ file:///tmp/build/80754af9/prompt-toolkit_1602688806899/work
 ptyprocess==0.6.0
 py-slippi==1.5.0
 py-ubjson==0.16.1
-pycparser==2.20
+pycparser @ file:///home/conda/feedstock_root/build_artifacts/pycparser_1593275161868/work
 pyenet==1.3.14
 Pygments @ file:///tmp/build/80754af9/pygments_1604103097372/work
 pynvim==0.4.2
@@ -86,7 +87,7 @@ SecretStorage==3.1.2
 Send2Trash==1.5.0
 serial==0.0.97
 six==1.15.0
--e git+https://github.com/davidtjones/ac-bot.git@788e557aa0515d5a176b871a13c76d542ae48ead#egg=src
+-e git+https://github.com/davidtjones/ac-bot.git@7c187287418e6cc98401f9fffd09b17f32847e1f#egg=src
 tabulate==0.8.7
 termcolor==1.1.0
 terminado==0.9.1
