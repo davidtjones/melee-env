@@ -6,6 +6,8 @@ env = MeleeEnv(True)
 
 episodes = 10 
 agent_reward = []
+
+env.start()
 for episode in range(episodes):
     # get to versus mode and select characters, start match
     observation, reward, done, info = env.setup()

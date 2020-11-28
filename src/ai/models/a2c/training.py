@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import torch
 import torch.nn as nn
@@ -5,18 +6,16 @@ import torch.optim as optim
 import torch.distributions as distributions
 import torch.nn.functional as F
 
+import signal
+
 def train(env, policy, optimizer, discount_factor, device=None):
     # only one producer can produce examples at a time since there is only one
     #   instance of dolphin available. 
-    env.start()
+    env.setup()
     
-    policy.train()
-    optimizer.zero_grad()
-    critic_criterion = nn.SmoothL1Loss()
-
     log_prob_actions = []
-    values = []
     rewards = []
+    values = []
 
     state, reward, done, info = env.setup()
 
@@ -36,9 +35,7 @@ def train(env, policy, optimizer, discount_factor, device=None):
         log_prob_actions.append(m.log_prob(action))
         rewards.append(reward)
         values.append(preds[1])
-    
-    env.stop()
-
+        
     log_prob_actions = torch.cat(log_prob_actions).to(device=device)
     values = torch.cat(values).squeeze(-1).to(device=device)
 
@@ -55,6 +52,8 @@ def train(env, policy, optimizer, discount_factor, device=None):
     advantages = returns - values
     advantages = (advantages.mean())/advantages.std()
 
+    critic_criterion = nn.SmoothL1Loss()
+    optimizer.zero_grad()
     policy_loss = -(advantages.detach() * log_prob_actions).sum()
     value_loss  = critic_criterion(returns.detach().float(), values.float()).sum()
 
@@ -62,12 +61,13 @@ def train(env, policy, optimizer, discount_factor, device=None):
     policy_loss.backward()
     value_loss.backward()
     optimizer.step()
-    return policy_loss, value_loss, sum(rewards)
 
+    return policy_loss, value_loss, sum(rewards)
+    
     
 def test(env, policy, device=None):
-    env.start()
-    
+    env.setup() 
+   
     policy.eval()
     total_reward = 0
     state, reward, done, info = env.setup()
@@ -84,8 +84,6 @@ def test(env, policy, device=None):
         action = torch.argmax(action_prob, dim=-1)
         state, reward, done, info = env.step(action.item())
         total_reward += reward
-
-    env.stop()
 
     return total_reward
  

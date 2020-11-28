@@ -1,8 +1,10 @@
 import sys
-import time
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.multiprocessing import Process, Queue, Lock
+from multiprocessing.managers import BaseManager
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,31 +13,60 @@ import code
 
 from src.ai.MeleeEnv import MeleeEnv
 from src.ai.models.a2c.a2c import A2C, MLP
-from src.ai.models.a2c.training import train, test
+from src.ai.models.a2c.async_training import train, test, update
+
+class TrainProxy(Process):
+    def __init__(self, q, network, optimizer):
+        Process.__init__(self)
+        self.q = q
+        self.network = network
+        self.optimizer = optimizer
+
+    def run(self):
+        self.listen()
+        print("trainer started")
+
+    def listen(self):
+        print("waiting for data")
+        while True:
+            data = self.q.get()
+            print(data)
+
 
 if __name__ == '__main__':
-    episodes = 20
+    episodes = 2
     discount_factor = .25
     learning_rate = 0.001
 
     gpu = torch.device('cuda:0')
     cpu = torch.device('cpu')
 
-    env = MeleeEnv(fast_forward=False, blocking_input=False)
-    env.init()
-
+    torch.multiprocessing.set_start_method('fork')
+    
+    env = MeleeEnv(fast_forward=True, blocking_input=False)
     policy = A2C(
         MLP((env.observation_space.size, 128, 128, env.action_space.size)),
         MLP((env.observation_space.size, 128, 128, 1))).to(device=cpu)
 
+    policy.share_memory()
+
     optimizer = optim.Adam(policy.parameters(), lr=learning_rate)
 
+    q = Queue() 
+    trainer = TrainProxy(q, policy, optimizer)
+    trainer.start()
+    
     train_rewards = []
     test_rewards = []
 
+    env.start()
+
     for episode in range(episodes):
-        p_loss, v_loss, train_reward = train(env, policy, optimizer, discount_factor, cpu)
+        actions, rewards, values = train(env, policy, cpu)
+        train_reward = sum(rewards)
+        q.put({"train": [actions, rewards, values]})
         test_reward = test(env, policy, cpu)
+        
  
     env.close()
     print("training complete") 

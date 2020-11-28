@@ -1,3 +1,4 @@
+import time
 from src.config.project import Project
 import numpy as np
 import melee
@@ -5,9 +6,10 @@ import code
 import time
     
 class MeleeEnv:
-    def __init__(self, fast_forward=False):
+    def __init__(self, fast_forward=False, blocking_input=False):
         self.project = Project()
         self.project.set_ff(fast_forward)
+        self.blocking_input = blocking_input
 
         # TODO: pass as argument w/ base class so it's easy to compare
         #       different action and observation spaces.
@@ -15,13 +17,16 @@ class MeleeEnv:
         self.observation_space = ObservationSpace()
         self.gamestate = None
 
+        # vis
+        self.ai_costume=2
+        self.costume_change = False
 
-    def start(self):
+
+    def init(self):
         self.console = melee.Console(
             path=str(self.project.slippi_bin),
-            #  blocking_input=True)  # broken atm
-        )
-        
+            blocking_input=self.blocking_input)  # broken in 0.21.0
+                
         self.controllers = {
             'ai': melee.Controller(console=self.console, port=1),
             'cpu': melee.Controller(console=self.console, port=2) }
@@ -33,25 +38,39 @@ class MeleeEnv:
             c.connect()
 
         self.gamestate = self.console.step()
-
+    
 
     def setup(self):
+        curr_time = time.time()
         while True:
             self.gamestate = self.console.step()
             if self.gamestate.menu_state is melee.Menu.CHARACTER_SELECT:
-                melee.MenuHelper.choose_character(character=melee.enums.Character.FOX,
-                                                  gamestate=self.gamestate,
-                                                  controller=self.controllers['ai'],
-                                                  costume=2,
-                                                  swag=False,
-                                                  start=False)
+                if time.time() < curr_time + 2:
+                    # give the controllers time to pick options
+                    melee.MenuHelper.choose_character(
+                        character=melee.enums.Character.FOX,
+                        gamestate=self.gamestate,
+                        controller=self.controllers['ai'],
+                        costume=self.ai_costume,
+                        swag=False,
+                        start=False)
 
-                melee.MenuHelper.choose_character(character=melee.enums.Character.FOX,
-                                                  gamestate=self.gamestate,
-                                                  controller=self.controllers['cpu'],
-                                                  cpu_level=1,
-                                                  swag=False,
-                                                  start=True)
+                    melee.MenuHelper.choose_character(
+                        character=melee.enums.Character.FOX,
+                        gamestate=self.gamestate,
+                        controller=self.controllers['cpu'],
+                        cpu_level=1,
+                        swag=False,
+                        start=False)
+                else:
+                    melee.MenuHelper.choose_character(
+                        character=melee.enums.Character.FOX,
+                        gamestate=self.gamestate,
+                        controller=self.controllers['ai'],
+                        costume=self.ai_costume,
+                        swag=False,
+                        start=True)
+
 
             elif self.gamestate.menu_state is melee.Menu.STAGE_SELECT:
                 melee.MenuHelper.choose_stage(stage=melee.enums.Stage.FINAL_DESTINATION,
@@ -75,13 +94,9 @@ class MeleeEnv:
 
             return self.observation_space(self.gamestate)
         else:
-            for t, c in self.controllers.items():
-                c.release_all()
             return None, None, True, None
 
-    def stop(self):
-        # once blocking calls are fixed, this can be moved to the end
-        # this can be used to restart the instance. 
+    def close(self):
         for t, c in self.controllers.items():
             c.disconnect()
         self.observation_space._reset()
@@ -164,32 +179,27 @@ class ObservationSpace:
         total_reward = 0
         info = None
         
-        stocks = self.get_stocks()      # 2x2
-        percents = self.get_percents()  # 2x2 
+        stocks = self.get_stocks()        # 2x2
+        percents = self.get_percents()    # 2x2 
         positions = self.get_positions()  # 3x2
         actions = self.get_actions()      # 2x2 
         
+        self.done = not (bool(stocks[1][0]) or bool(stocks[1][1]))
         if self.current_frame > 85 and not self.done:
             # reward/penalize based on delta damage/stocks
-            if stocks[0][0] != 0:
-                print(f"Stock change {stocks[0][0]}")
-            if stocks[0][1] != 0:
-                print(f"stock change {stocks[0][1]}")
 
-            total_reward -= (100 * stocks[0][0])
-            total_reward += (100 * stocks[0][1])
+            total_reward -= (100 * stocks[0][0]) * .5
+            total_reward += (100 * stocks[0][1]) * 2
 
             # if stocks change, don't reward for going back to 0 damage
             # assumption: you can't lose more than one stock on a given frame
-            # total_reward -= (percents[0][0] * (1^stocks[0][0]))
-            # total_reward += (percents[0][1] * (1^stocks[0][1]))
-
+            total_reward -= (percents[0][0] * (1^stocks[0][0])) * 2
+            total_reward += (percents[0][1] * (1^stocks[0][1])) * 8
 
 
         if self.current_gamestate is not None:
             self.previous_gamestate = self.current_gamestate
 
-        self.done = not (bool(stocks[1][0]) or bool(stocks[1][1]))
         
         observation = np.concatenate((stocks, percents, positions, actions))
 
