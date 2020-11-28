@@ -41,35 +41,25 @@ class MeleeEnv:
     
 
     def setup(self):
-        curr_time = time.time()
         while True:
             self.gamestate = self.console.step()
             if self.gamestate.menu_state is melee.Menu.CHARACTER_SELECT:
-                if time.time() < curr_time + 2:
-                    # give the controllers time to pick options
-                    melee.MenuHelper.choose_character(
-                        character=melee.enums.Character.FOX,
-                        gamestate=self.gamestate,
-                        controller=self.controllers['ai'],
-                        costume=self.ai_costume,
-                        swag=False,
-                        start=False)
+                # give the controllers time to pick options
+                melee.MenuHelper.choose_character(
+                    character=melee.enums.Character.FOX,
+                    gamestate=self.gamestate,
+                    controller=self.controllers['ai'],
+                    costume=self.ai_costume,
+                    swag=False,
+                    start=False)
 
-                    melee.MenuHelper.choose_character(
-                        character=melee.enums.Character.FOX,
-                        gamestate=self.gamestate,
-                        controller=self.controllers['cpu'],
-                        cpu_level=1,
-                        swag=False,
-                        start=False)
-                else:
-                    melee.MenuHelper.choose_character(
-                        character=melee.enums.Character.FOX,
-                        gamestate=self.gamestate,
-                        controller=self.controllers['ai'],
-                        costume=self.ai_costume,
-                        swag=False,
-                        start=True)
+                melee.MenuHelper.choose_character(
+                    character=melee.enums.Character.FOX,
+                    gamestate=self.gamestate,
+                    controller=self.controllers['cpu'],
+                    cpu_level=1,
+                    swag=False,
+                    start=True)
 
 
             elif self.gamestate.menu_state is melee.Menu.STAGE_SELECT:
@@ -183,18 +173,21 @@ class ObservationSpace:
         percents = self.get_percents()    # 2x2 
         positions = self.get_positions()  # 3x2
         actions = self.get_actions()      # 2x2 
+
+        if 0 <= actions[0][0] <= 10:
+            info = "dead"
         
         self.done = not (bool(stocks[1][0]) or bool(stocks[1][1]))
         if self.current_frame > 85 and not self.done:
             # reward/penalize based on delta damage/stocks
 
-            total_reward -= (100 * stocks[0][0]) * .5
-            total_reward += (100 * stocks[0][1]) * 2
+            # total_reward -= (100 * stocks[0][0]) * .5
+            total_reward += (100 * stocks[0][1]) * 4
 
             # if stocks change, don't reward for going back to 0 damage
             # assumption: you can't lose more than one stock on a given frame
-            total_reward -= (percents[0][0] * (1^stocks[0][0])) * 2
-            total_reward += (percents[0][1] * (1^stocks[0][1])) * 8
+            # total_reward -= (percents[0][0] * (1^stocks[0][0])) * 2
+            total_reward += (percents[0][1] * (1^stocks[0][1]))
 
 
         if self.current_gamestate is not None:
