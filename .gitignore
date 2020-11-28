@@ -147,3 +147,4 @@ src/ai/training/dataset/slp-dataset/melee_public_slp_dataset_v2.7z
 src/User/*
 src/Slippi/replays/*
 src/Slippi/config/config.json
+*.pt 
