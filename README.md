@@ -4,12 +4,11 @@ actor-critic bot
 ## About
 This bot runs actor-critic. One of the key elements of any reinforcement-learning agent is the reward signal received at each time step. 
 
-Current reward signal: (damage dealt) - (damage taken) + 100*(stocks taken) - 100*(stocks lost)
 
 ## Setup
 You must have your own copy of Super Smash Bros Melee as well as the Slippi Online AppImage (get started here: https://slippi.gg). Move the AppImage into `src/Slippi`. Additional setup has been mostly automated: 
 
-1. Install the environment using miniconda (placeholder)
+1. Install the environment using miniconda / pip
 2. Navigate the `src` directory
 3. Run `python config/genconfig.py`. Optionally pass in your ISO via `--iso=path/to/iso to load the game more quickly.`
 4. Run `python Slippi/tools/unpack.py` to extract the game from the appimage. This will also form a portable installation. The appimage can be safely deleted at this point.
@@ -19,12 +18,6 @@ You must have your own copy of Super Smash Bros Melee as well as the Slippi Onli
 
 
 Some notes:
-* When executing actions on a given frame, you are looking for the falling edge of the previous frame
-	* Fox multishine for example:
-		* Shine on frame 1
-		* Jump on frame 1 of jump squat => after frame 3 of kneebend
 * ~~If you notice that controllers aren't working, check the config in dolphin and verify that the controller profile is setup correctly. I have placed a working GCPadNew.ini in this repo.~~ This should be fixed by the new automation steps!
 
-
-The [SLP Dataset](https://drive.google.com/file/d/1ab6ovA46tfiPZ2Y3a_yS1J3k3656yQ8f/view?usp=sharing) is tentatively required for the initial training setup. It needs to be placed in or linked to src/training/dataset/slp
 
