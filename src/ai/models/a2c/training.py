@@ -61,6 +61,7 @@ def train(env, policy, optimizer, discount_factor, device=None):
             value_loss  = critic_criterion(returns.detach().float(), values.float()).sum()
 
             # Update
+            
             policy_loss.backward()
             value_loss.backward()
             optimizer.step()

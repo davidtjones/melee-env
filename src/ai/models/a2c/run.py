@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import code
 
 from src.ai.MeleeEnv import MeleeEnv
-from src.ai.models.a2c.a2c import A2C, MLP
+from src.ai.models.a2c.a2c import A2C, ActorCritic
 from src.ai.models.a2c.training import train, test
 
 if __name__ == '__main__':
@@ -21,11 +21,22 @@ if __name__ == '__main__':
     gpu = torch.device('cuda:0')
     cpu = torch.device('cpu')
 
-    env = MeleeEnv(fast_forward=False, blocking_input=False)
+    env = MeleeEnv(fast_forward=True, blocking_input=False)
+    
+    Actor = ActorCritic(env.observation_space.size,
+                        env.action_space.size,
+                        [8, 9, 14, 15],  # categorical feature indices
+                        [(2, 1), (2, 1), (383,200), (383,200)],  # categorical feature embedding (size, dim)
+                        [128, 128, 128])
 
-    policy = A2C(
-        MLP((env.observation_space.size, 128, 128, env.action_space.size)),
-        MLP((env.observation_space.size, 128, 128, 1))).to(device=cpu)
+    print(Actor)
+    Critic = ActorCritic(env.observation_space.size,
+                         1,
+                         [8, 9, 14, 15],  # categorical feature indices
+                         [(2, 1), (2, 1), (383,200), (383,200)],  # categorical feature embedding (size, dim)
+                         [128, 128, 128])
+
+    policy = A2C(Actor, Critic)
 
     optimizer = optim.Adam(policy.parameters(), lr=learning_rate)
 
@@ -47,10 +58,8 @@ if __name__ == '__main__':
         discount_factor = checkpoint['discount_factor']
         print("Loaded Previous Run!")
 
-    env.init()
+    env.start()
     
-
-
     for episode in range(curr_episode, episodes):
         start_time = time.time()
         print(f"Episode: {episode}")

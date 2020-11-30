@@ -6,9 +6,10 @@ import code
 import time
     
 class MeleeEnv:
-    def __init__(self, fast_forward=False, blocking_input=False):
+    def __init__(self, fast_forward=False, p2_human=False, blocking_input=False):
         self.project = Project()
         self.project.set_ff(fast_forward)
+        self.p2_human = p2_human
         self.blocking_input = blocking_input
 
         # TODO: pass as argument w/ base class so it's easy to compare
@@ -17,19 +18,22 @@ class MeleeEnv:
         self.observation_space = ObservationSpace()
         self.gamestate = None
 
-        # vis
-        self.ai_costume=2
-        self.costume_change = False
 
-
-    def init(self):
+    def start(self):
         self.console = melee.Console(
             path=str(self.project.slippi_bin),
             blocking_input=self.blocking_input)  # broken in 0.21.0
-                
-        self.controllers = {
-            'ai': melee.Controller(console=self.console, port=1),
-            'cpu': melee.Controller(console=self.console, port=2) }
+        
+        if self.p2_human:
+            self.controllers = {
+                'ai': melee.Controller(console=self.console, port=1),
+                'hmn': melee.Controller(console=self.console, port=2,
+                                        type=melee.ControllerType.GCN_ADAPTER) }
+        
+        else:
+            self.controllers = {
+                'ai': melee.Controller(console=self.console, port=1),
+                'cpu': melee.Controller(console=self.console, port=2) }
 
         self.console.run(iso_path=self.project.iso)
         self.console.connect()
@@ -38,18 +42,17 @@ class MeleeEnv:
             c.connect()
 
         self.gamestate = self.console.step()
-    
-
-    def setup(self):
+ 
+    def reset(self):
+        # currently not working
         while True:
             self.gamestate = self.console.step()
             if self.gamestate.menu_state is melee.Menu.CHARACTER_SELECT:
-                # give the controllers time to pick options
                 melee.MenuHelper.choose_character(
                     character=melee.enums.Character.FOX,
                     gamestate=self.gamestate,
                     controller=self.controllers['ai'],
-                    costume=self.ai_costume,
+                    costume=2,
                     swag=False,
                     start=False)
 
@@ -59,7 +62,7 @@ class MeleeEnv:
                     controller=self.controllers['cpu'],
                     cpu_level=1,
                     swag=False,
-                    start=True)
+                    start=False)
 
 
             elif self.gamestate.menu_state is melee.Menu.STAGE_SELECT:
@@ -68,17 +71,81 @@ class MeleeEnv:
                                               controller=self.controllers['ai'])
 
             elif self.gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
-                return self.observation_space(self.gamestate)
+                # in a game, need to press start!
+                pressed_start = False 
+                start_push_time = False
+
+                while True:
+                    self.gamestate = self.console.step()
+                    self.controllers['ai'].release_all()
+                    print(self.gamestate.frame)
+                    if self.gamestate.frame > 0 and not pressed_start: # can pause game?
+                        if not start_push_time:
+                            start_push_time = time.time()  # when did we press start?
+                            print(start_push_time)
+                        self.controllers['ai'].press_button(melee.enums.Button.BUTTON_START)
+                        print(pressed_start, start_push_time)
+                        if start_push_time and time.time() > start_push_time + 1:  # wait 2 secs
+                            self.controllers['ai'].release_all()
+                            pressed_start = True  # start has been pressed
+                            print("start pressed :)")
+
+                    if self.gamestate.frame > 0 and pressed_start:  # time to press LRAS
+                        self.controllers['ai'].press_shoulder(melee.enums.Button.BUTTON_L, 1)
+                        self.controllers['ai'].press_shoulder(melee.enums.Button.BUTTON_R, 1)
+                        self.controllers['ai'].press_button(melee.enums.Button.BUTTON_A)
+                        self.controllers['ai'].press_button(melee.enums.Button.BUTTON_START)
+
+                    if self.gamestate.menu_state not in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
+                        # SUCCESS!
+                        print(self.gamestate.menu_state)        
+                        
+            else:
+                melee.MenuHelper.choose_versus_mode(self.gamestate, self.controllers['ai'])
+
+    def setup(self):
+        while True:
+            self.gamestate = self.console.step()
+            if self.gamestate.menu_state is melee.Menu.CHARACTER_SELECT:
+                melee.MenuHelper.choose_character(
+                    character=melee.enums.Character.FOX,
+                    gamestate=self.gamestate,
+                    controller=self.controllers['ai'],
+                    costume=2,
+                    swag=False,
+                    start=False)
+                
+                if not self.p2_human:
+                    melee.MenuHelper.choose_character(
+                        character=melee.enums.Character.FOX,
+                        gamestate=self.gamestate,
+                        controller=self.controllers['cpu'],
+                        cpu_level=1,
+                        swag=False,
+                        start=True)
+
+
+            elif self.gamestate.menu_state is melee.Menu.STAGE_SELECT:
+                melee.MenuHelper.choose_stage(stage=melee.enums.Stage.FINAL_DESTINATION,
+                                              gamestate=self.gamestate,
+                                              controller=self.controllers['ai'])
+
+            elif self.gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
+                if self.gamestate.frame < -83:
+                    continue
+                else:
+                    return self.observation_space(self.gamestate)
 
             else:
                 melee.MenuHelper.choose_versus_mode(self.gamestate, self.controllers['ai'])
 
 
-    def step(self, action=0):
+    def step(self, action=None):
         if self.gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
-            
-            controller_input = self.action_space(action)
-            controller_input.execute(self.controllers['ai'])    
+           
+            if action:
+                controller_input = self.action_space(action)
+                controller_input.execute(self.controllers['ai'])    
 
             self.gamestate = self.console.step()
 
@@ -108,6 +175,22 @@ class ObservationSpace:
         self.done = False
         self.previous_gamestate = None
         self.current_gamestate = None
+    
+    def get_stocks(self):
+        # return a tuple (p1 stocks lost, p2 stocks lost)
+        current = np.array([
+            self.current_gamestate.player[1].stock, 
+            self.current_gamestate.player[2].stock])
+
+        if self.previous_gamestate is not None:
+            previous = np.array([
+                self.previous_gamestate.player[1].stock, 
+                self.previous_gamestate.player[2].stock])
+
+            diff = previous - current  # stocks go down
+        else:
+            diff = np.array([0, 0])
+        return np.array([diff, current])
 
     def get_percents(self):
         # return a array [(damage done, damage taken)]
@@ -125,21 +208,6 @@ class ObservationSpace:
 
         return np.array([diff, current])
 
-    def get_stocks(self):
-        # return a tuple (p1 stocks lost, p2 stocks lost)
-        current = np.array([
-            self.current_gamestate.player[1].stock, 
-            self.current_gamestate.player[2].stock])
-
-        if self.previous_gamestate is not None:
-            previous = np.array([
-                self.previous_gamestate.player[1].stock, 
-                self.previous_gamestate.player[2].stock])
-
-            diff = previous - current  # stocks go down
-        else:
-            diff = np.array([0, 0])
-        return np.array([diff, current])
 
     def get_positions(self):
         facing = (self.current_gamestate.player[1].facing, 
@@ -174,6 +242,14 @@ class ObservationSpace:
         positions = self.get_positions()  # 3x2
         actions = self.get_actions()      # 2x2 
 
+        # after calling flatten:
+        # [p1_stocks, p1_stock_d, p2_stocks, p2_stock_d, 
+        #  p1_percent, p1_percent_d, p2_percent, p2_percent_d,
+        #  p1_facing, p2_facing, p1_x, p2_x, p1_y, p2_y, 
+        #  p1_action, p2_action, p1_act_f, p2_act_f]
+        #
+        # categorical feature indices: p1_facing (8), p2_facing(9), p1_action(14), p2_action(15)
+
         if 0 <= actions[0][0] <= 10:
             info = "dead"
         
@@ -183,6 +259,7 @@ class ObservationSpace:
 
             # total_reward -= (100 * stocks[0][0]) * .5
             total_reward += (100 * stocks[0][1]) * 4
+            total_reward -= (100 * stocks[0][0]) * 1
 
             # if stocks change, don't reward for going back to 0 damage
             # assumption: you can't lose more than one stock on a given frame
@@ -286,16 +363,17 @@ class ControlState:
     def __init__(self, state):
         self.state = state
         self.buttons = [
+            False,
             melee.enums.Button.BUTTON_A,
             melee.enums.Button.BUTTON_B,
-            melee.enums.Button.BUTTON_R,
-            melee.enums.Button.BUTTON_Z]
+            melee.enums.Button.BUTTON_Z,
+            melee.enums.Button.BUTTON_R]
 
     def execute(self, controller):
         controller.release_all()      # reset everything real quick
-        if self.state[2] != 0.0:      # no-op
+        if self.state[2]:             # no-op, don't press any buttons
             if self.state[2] != 4.0:  # R shoulder
-                controller.press_button(self.buttons[int(self.state[2])-1]) 
+                controller.press_button(self.buttons[int(self.state[2])]) 
             else:
                 controller.press_shoulder(melee.enums.Button.BUTTON_R, 1)
         
@@ -303,7 +381,3 @@ class ControlState:
                                     self.state[0], self.state[1])
 
 
-if __name__ == "__main__":
-    import code
-    asp = ActionSpace()
-    code.interact(local=locals())
