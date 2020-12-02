@@ -250,21 +250,21 @@ class ObservationSpace:
         #
         # categorical feature indices: p1_facing (8), p2_facing(9), p1_action(14), p2_action(15)
 
-        if 0 <= actions[0][0] <= 10:
+        if 0 <= actions[0][0] <= 10:  # DEAD_DOWN, DEAD_LEFT ... 
             info = "dead"
         
         self.done = not (bool(stocks[1][0]) or bool(stocks[1][1]))
         if self.current_frame > 85 and not self.done:
             # reward/penalize based on delta damage/stocks
 
-            # total_reward -= (100 * stocks[0][0]) * .5
-            total_reward += (100 * stocks[0][1]) * 4
-            total_reward -= (100 * stocks[0][0]) * 1
+            # +- 1 for stocks taken/lost
+            total_reward += (stocks[0][1])
+            total_reward -= (stocks[0][0])
 
             # if stocks change, don't reward for going back to 0 damage
             # assumption: you can't lose more than one stock on a given frame
-            # total_reward -= (percents[0][0] * (1^stocks[0][0])) * 2
-            total_reward += (percents[0][1] * (1^stocks[0][1]))
+            total_reward -= (percents[0][0] * (1^stocks[0][0])) * .01
+            total_reward += (percents[0][1] * (1^stocks[0][1])) * .01
 
 
         if self.current_gamestate is not None:

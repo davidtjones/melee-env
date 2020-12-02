@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-
-
+from torch.distributions import Categorical
+import code
 # Networks
 
 class Debug(nn.Module):
@@ -13,89 +13,151 @@ class Debug(nn.Module):
         print(x.shape)
         return x
 
+class Memory:
+    def __init__(self):
+        self.actions = []
+        self.states = []
+        self.logprobs = []
+        self.rewards = []
+        self.is_terminals = []
+
+    def clear_memory(self):
+        del self.actions[:]
+        del self.states[:]
+        del self.logprobs[:]
+        del self.rewards[:]
+        del self.is_terminals[:]
+
 class ActorCritic(nn.Module):
     def __init__(self, 
-                 input_size, 
-                 output_size, 
-                 idx_cat,
-                 emb_dims,
-                 mlp_dims,
-                 emb_dropout=0.1,
-                 lin_dropout=0.1):
-
+                 obs_space_size, 
+                 action_space_size, 
+                 hidden_size):
         # input_size: number of input features
         # output_size: action space size for actor
-        # idx_cat: list of indices correspoding to categorical features
-        # emb_dims: list of tuples (emb_size, emb_dim) of each categorical feature
-        #   corresponding to idx_cat
-        # emb_dropout: desired dropout on embedding layers
-        # lin_dropout: desired dropout on linear layers
-
-        super().__init__()
-        self.idx_cat = idx_cat
-
-        self.idx_con = []
-        for i in range(input_size):
-            if i not in idx_cat:
-                self.idx_con.append(i)
-
-
-        self.embeddings = []
-        self.emb_dropout = []
-        embed_length = 0
-        for idx, categorical_feature in enumerate(idx_cat):
-            self.embeddings.append(nn.Embedding(emb_dims[idx][0], emb_dims[idx][1]))
-            self.emb_dropout.append(nn.Dropout(emb_dropout))
-            embed_length += emb_dims[idx][1]
-
-        con_length = len(self.idx_con)
-        # normalize continuous features
-        self.continuous_batchnorm = nn.BatchNorm1d(con_length)
-
-
-        self.MLP = []
-        self.MLP.append(nn.Linear(con_length+embed_length, mlp_dims[0]))
-
-        for i in range(len(mlp_dims)-1):
-            self.MLP.append(nn.Linear(mlp_dims[i], mlp_dims[i+1]))
-            self.MLP.append(nn.LeakyReLU(0.05))
-
-        self.MLP.append(nn.Linear(mlp_dims[-1], output_size))
-        self.MLP = nn.Sequential(*self.MLP)
-
-
-    def forward(self, x):
-        b = x.shape[0]
-        # feed categorical features through embeddings first
-        embedded_cat = []
-        categorical = x[:, self.idx_cat].long()
-        for idx, categorical_feature in enumerate(self.idx_cat):
-            embedded_cat.append(
-                # apply the embedding for categorical feature `x_idx` with 
-                #   embedding `embedding_idx`
-                self.embeddings[idx](categorical[:, idx]))
-
-        embedding = torch.cat(embedded_cat, dim=1)
-
-        x_cont = x[:, self.idx_con]
-
-        feature_vector = torch.cat((embedding, x_cont), dim=1)
-        
-        return self.MLP(feature_vector)
-        
-
-class A2C(nn.Module):
-    def __init__(self, actor, critic):
         super().__init__()
 
-        self.actor = actor
-        self.critic = critic
+        # actions go through this embedding first
+        self.action_embedding = nn.Embedding(400, 200)
+        
+        self.actor = nn.Sequential(
+            nn.Linear(200+obs_space_size-2, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, action_space_size),
+            nn.Softmax(dim=-1)
+        )
 
-    def forward(self, state):
-        action = self.actor(state)
-        value = self.critic(state)
+        self.critic = nn.Sequential(
+            nn.Linear(200+obs_space_size-2, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, 1)
+        )
 
-        return action, value
+    def build_feature_vector(self, state):
+        # x: input with shape [1, obs_space_size]
+        # actions go through embedding
+        
+        actions = state[:, 14:16].long()
+        interaction = self.action_embedding(actions[:, 0]) - self.action_embedding(actions[:, 1])
+        action_frames = state[:, 16:18]
+        continuous_features = state[:, 0:14]
+        features = torch.cat([continuous_features,
+                              interaction,
+                              action_frames], dim=1)
+
+        return features
+
+    def act(self, state, memory):
+        
+        state = torch.tensor(
+            state.flatten().reshape(1, -1),
+            dtype=torch.float32)
+
+        action_probs = self.actor(self.build_feature_vector(state))
+        dist = Categorical(action_probs)
+        action = dist.sample()
+
+        memory.states.append(state)
+        memory.actions.append(action)
+        memory.logprobs.append(dist.log_prob(action))
+
+        return action.item()
+
+
+    def evaluate(self, state, action): 
+        features = self.build_feature_vector(state)
+        action_probs = self.actor(features)
+        dist = Categorical(action_probs)
+
+        action_logprobs = dist.log_prob(action)
+        dist_entropy = dist.entropy()
+
+        state_value = self.critic(features)
+
+        return action_logprobs, torch.squeeze(state_value), dist_entropy
+
+
+class PPO:
+    def __init__(self, state_dim, action_dim, n_latent_var, lr, gamma, beta, K_epochs, eps_clip):
+        self.lr = lr
+        self.gamma = gamma
+        self.beta = beta
+        self.eps_clip = eps_clip
+        self.K_epochs = K_epochs
+
+        self.policy = ActorCritic(state_dim, action_dim, n_latent_var)
+        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
+        self.policy_old = ActorCritic(state_dim, action_dim, n_latent_var)
+        self.policy_old.load_state_dict(self.policy.state_dict())
+
+        self.value_loss = nn.MSELoss()
+
+    def update(self, memory):
+        # monte carlo estimate of state rewards:
+        rewards = []
+        discounted_reward = 0
+        for reward, is_terminal in zip(reversed(memory.rewards), reversed(memory.is_terminals)):
+            if is_terminal:
+                discounted_rewards = 0
+            discounted_reward = reward + (self.gamma * discounted_reward)
+            rewards.insert(0, discounted_reward)
+
+        rewards = torch.tensor(rewards, dtype=torch.float32)
+        rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-5)
+
+        old_states = torch.cat(memory.states, dim=0).detach()
+        old_actions = torch.stack(memory.actions).detach()
+        old_logprobs = torch.stack(memory.logprobs).detach()
+
+        # optimize
+        for _ in range(self.K_epochs):
+            # evaluate old actions and values
+            logprobs, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
+
+            # get ratio pi_theta/pi_theta_old
+            ratios = torch.exp(logprobs - old_logprobs.detach())
+
+            # Surrage loss
+            advantages = rewards - state_values.detach()
+            surr1 = ratios * advantages
+            surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
+            loss = -torch.min(surr1, surr2) + 0.5*self.value_loss(state_values, rewards) - 0.01*dist_entropy
+
+            # take gradient step
+            self.optimizer.zero_grad()
+            loss.mean().backward()
+            self.optimizer.step()
+
+        # copy new weights into old policy
+        self.policy_old.load_state_dict(self.policy.state_dict())
+
+                                                                  
+
+
 
 
 

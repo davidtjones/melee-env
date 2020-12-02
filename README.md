@@ -2,8 +2,33 @@ actor-critic bot
 ---
 
 ## About
-This bot runs actor-critic. One of the key elements of any reinforcement-learning agent is the reward signal received at each time step. 
+This repo contains an implemention of Melee as a Gym-esque environment. It also includes an actor critic agent implemented on this environment. 
 
+### Code sample: 
+```python
+from src.ai.MeleeEnv import MeleeEnv
+import matplotlib.pyplot as plt
+
+# make the environment
+env = MeleeEnv(fast_forward=False, blocking_input=False) 
+
+episodes = 10 
+
+env.start()
+for episode in range(episodes):
+    # get to versus mode and select characters, start match
+    observation, reward, done, info = env.setup()
+
+    # input actions until the match is finished
+    while not done:
+        print(observation.flatten())
+        action = env.action_space.sample()
+        observation, reward, done, info = env.step(action)
+
+```
+
+## Note
+This library requires Slippi, which in turn requires an SSBM 1.02 NTSC/PAL ISO. This library does not and will not distribute this. You must acquire this on your own!
 
 ## Setup
 You must have your own copy of Super Smash Bros Melee as well as the Slippi Online AppImage (get started here: https://slippi.gg). Move the AppImage into `src/Slippi`. Additional setup has been mostly automated: 

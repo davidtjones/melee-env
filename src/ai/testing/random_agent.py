@@ -2,7 +2,7 @@ from src.ai.MeleeEnv import MeleeEnv
 import matplotlib.pyplot as plt
 
 # make the environment
-env = MeleeEnv(True) 
+env = MeleeEnv(fast_forward=False, blocking_input=False) 
 
 episodes = 10 
 agent_reward = []
@@ -15,8 +15,9 @@ for episode in range(episodes):
 
     # input actions until the match is finished
     while not done:
+        print(observation.flatten())
         action = env.action_space.sample()
-        obs, reward, done, info = env.step(action)
+        observation, reward, done, info = env.step(action)
         total_reward += reward
 
     agent_reward.append(total_reward)

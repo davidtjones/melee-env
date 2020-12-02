@@ -10,88 +10,77 @@ import matplotlib.pyplot as plt
 import code
 
 from src.ai.MeleeEnv import MeleeEnv
-from src.ai.models.a2c.a2c import A2C, ActorCritic
-from src.ai.models.a2c.training import train, test
+from src.ai.models.a2c.a2c import PPO, Memory
 
 if __name__ == '__main__':
+    env = MeleeEnv(fast_forward=True, blocking_input=True)
+    
     episodes = 3000
-    discount_factor = .1
+    discount_factor = .5
     learning_rate = 0.001
+    entropy_coeff = 0.2  # prefer exploration
+    K_epochs = 4
+    eps_clip = 0.2
+    update_timestep = 120  # 2 seconds @60fps
+    frame_skip = 1
 
     gpu = torch.device('cuda:0')
     cpu = torch.device('cpu')
 
-    env = MeleeEnv(fast_forward=True, blocking_input=False)
-    
-    Actor = ActorCritic(env.observation_space.size,
-                        env.action_space.size,
-                        [8, 9, 14, 15],  # categorical feature indices
-                        [(2, 1), (2, 1), (383,200), (383,200)],  # categorical feature embedding (size, dim)
-                        [128, 128, 128])
+    memory = Memory()
+    ppo = PPO(env.observation_space.size, 
+              env.action_space.size, 
+              128, 
+              learning_rate,
+              discount_factor,
+              entropy_coeff,
+              K_epochs,
+              eps_clip)
 
-    print(Actor)
-    Critic = ActorCritic(env.observation_space.size,
-                         1,
-                         [8, 9, 14, 15],  # categorical feature indices
-                         [(2, 1), (2, 1), (383,200), (383,200)],  # categorical feature embedding (size, dim)
-                         [128, 128, 128])
-
-    policy = A2C(Actor, Critic)
-
-    optimizer = optim.Adam(policy.parameters(), lr=learning_rate)
-
-    train_rewards = []
-    test_rewards = []
-    best_reward = -100000
+    # logging
+    running_reward = 0
+    avg_length = 0
     curr_episode = 0
 
-    if Path("policy.pt").exists():
-        path = Path("policy.pt")
-        checkpoint = torch.load(path)
-        curr_episode = checkpoint['episode']
-        policy.load_state_dict(checkpoint['policy_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        best_reward = checkpoint['best_reward']
-        train_rewards = checkpoint['train_rewards']
-        test_rewards = checkpoint['test_rewards']
-        learning_rate = checkpoint['learning_rate']
-        discount_factor = checkpoint['discount_factor']
-        print("Loaded Previous Run!")
-
     env.start()
-    
+    timestep = 0
+
+    print("Training")
     for episode in range(curr_episode, episodes):
-        start_time = time.time()
         print(f"Episode: {episode}")
-        print("Training")
-        p_loss, v_loss, train_reward = train(env, policy, optimizer, discount_factor, cpu)
-        print("Testing")
-        test_reward = test(env, policy, cpu)
-        if test_reward > best_reward:
-            print("Model Saved")
-            torch.save(
-                {
-                    'episode': episode,
-                    'policy_state_dict': policy.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'best_reward': best_reward,
-                    'discount_factor': discount_factor,
-                    'learning_rate': 0.001,
-                    'train_rewards': train_rewards,
-                    'test_rewards': test_rewards
-                }, "policy.pt")
+        state, reward, done, info = env.setup()
+        start_time = time.time()
+        while not done:
+            timestep += 1
+            if timestep % frame_skip + 1 == 1:
+                # only perform an action every 2 frames
+                action = ppo.policy_old.act(state, memory)
+
+            state, reward, done, info = env.step(action)
+
+            if timestep % frame_skip + 1 == 1:
+                # only record actions when we perform them
+                memory.rewards.append(reward)
+                memory.is_terminals.append(done)
+
+            if timestep % update_timestep == 0:
+                ppo.update(memory)
+                memory.clear_memory()
+                timestep = 0
+
+            running_reward += reward
         end_time = time.time()
         print(f"Episode lasted {end_time - start_time}")
 
     env.close()
 
-    plt.title(f"Learning Rate")
-    plt.xlabel("Episode")
-    plt.ylabel("Reward")
-    plt.plot(train_rewards, label='train')
-    plt.plot(test_rewards, label='test')
-    plt.legend()
-    plt.show()
+    # plt.title(f"Learning Rate")
+    # plt.xlabel("Episode")
+    # plt.ylabel("Reward")
+    # plt.plot(train_rewards, label='train')
+    # plt.plot(test_rewards, label='test')
+    # plt.legend()
+    # plt.show()
     print("Complete")
     sys.exit(0)
 
