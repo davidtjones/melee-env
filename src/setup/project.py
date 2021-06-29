@@ -1,21 +1,20 @@
 import configparser
 from pathlib import Path
-from src.config.config import project_info
+from src.config import config
 
 class Project:
     def __init__(self, silent=False):
-        self.config = project_info
+        self.config = config
              
         # setup paths
         self.root = Path(self.config['root'])
+        self.home = Path(self.config['home'])
 
-        self.iso = None
-        if 'iso' in self.config:
-            self.iso = self.config['iso']
+        self.iso = self.config['iso'] if 'iso' in self.config else None          
 
         self.slippi = self.root / "Slippi"
         self.slippi_bin = self.slippi / "squashfs-root/usr/bin"
-        self.slippi_config_path = self.root / "Slippi/Slippi_Online-x86_64.AppImage.config/SlippiOnline/Config/Dolphin.ini"
+        self.slippi_config_path = self.root / "Slippi/data/Config/Dolphin.ini"
 
         self.slippi_gecko_ini = self.slippi_bin / "Sys/GameSettings/GALE01r2.ini"
 

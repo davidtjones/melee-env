@@ -32,17 +32,14 @@ This library requires Slippi, which in turn requires an SSBM 1.02 NTSC/PAL ISO. 
 
 ## Setup
 You must have your own copy of Super Smash Bros Melee as well as the Slippi Online AppImage (get started here: https://slippi.gg). Move the AppImage into `src/Slippi`. Additional setup has been mostly automated: 
-
-1. Install the environment using miniconda / pip
-2. Navigate the `src` directory
-3. Run `python config/genconfig.py`. Optionally pass in your ISO via `--iso=path/to/iso to load the game more quickly.`
-4. Run `python Slippi/tools/unpack.py` to extract the game from the appimage. This will also form a portable installation. The appimage can be safely deleted at this point.
-5. Run `python Slippi/tools/apply_gecko_codes.py` to apply the custom gecko codes needed to run libmelee
-6. Finally, run `python Slippi/tools/configure` to link your portable installation to the extracted game as well as to set Slippi configuration options. 
-7. (Optional) Test your installation. Run `python tests/shine.py`. Be sure to press enter when prompted. 
+1. `cd ac-bot`
+2. Conda recommended. Install from `environment.yml`. Complete environment installation by adding `src` to the environment with `pip install -e .`
+3. cd `src`
+4. Run `python setup/genconfig.py`. Optionally pass in your (legally obtained) ISO via `--iso=path/to/iso` to load the ISO on startup (highly recommended). 
+5. (Optional) Test your installation. Run `python tests/shine.py`. Be sure to press enter when prompted. 
 
 
 Some notes:
-* ~~If you notice that controllers aren't working, check the config in dolphin and verify that the controller profile is setup correctly. I have placed a working GCPadNew.ini in this repo.~~ This should be fixed by the new automation steps!
+* If you notice that controllers aren't working, check the config in dolphin and verify that the controller profile is setup correctly. The automation steps should take care of this. You can verify the controller config for the bot is correct by checking Controllers -> [port X] -> Configure and verifying that the resulting window looks like [this](https://user-images.githubusercontent.com/609563/86555862-7dd45d80-bf06-11ea-8d7e-e4d8007f66a3.png). You should be able to load the slippibot profile to fix this.
 
 

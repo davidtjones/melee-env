@@ -137,14 +137,15 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-src.egg-info/*
-src/squashfs-root/*
-src/ai/dataset/slp-dataset/training_data/*
-src/ai/training/dataset/slp-dataset/melee_public_slp_dataset_v2.7z
+# Project Specific
+src/config.py
+src/extra/GALE01r2.ini
 *Slippi_Online-x86_64.AppImage*
 *Slippi-Launcher*
 *squashfs-root*
-src/User/*
 src/Slippi/replays/*
-src/Slippi/config/config.json
+src/Slippi/data/*
 *.pt 
+
+
+
