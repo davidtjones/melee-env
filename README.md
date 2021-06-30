@@ -1,5 +1,6 @@
 actor-critic bot
 ---
+(temp name)
 
 ## About
 This repo contains an implemention of Melee as a Gym-esque environment. It also includes an actor critic agent implemented on this environment. 
@@ -40,6 +41,6 @@ You must have your own copy of Super Smash Bros Melee as well as the Slippi Onli
 
 
 Some notes:
-* If you notice that controllers aren't working, check the config in dolphin and verify that the controller profile is setup correctly. The automation steps should take care of this. You can verify the controller config for the bot is correct by checking Controllers -> [port X] -> Configure and verifying that the resulting window looks like [this](https://user-images.githubusercontent.com/609563/86555862-7dd45d80-bf06-11ea-8d7e-e4d8007f66a3.png). You should be able to load the slippibot profile to fix this.
+* If you notice that controllers aren't working, check the config in dolphin and verify that the controller profile is setup correctly. The automation steps should take care of this. You can verify the controller config for the bot is correct by checking Controllers -> [port X] -> Configure and verifying that the resulting window looks like [this](https://user-images.githubusercontent.com/609563/86555862-7dd45d80-bf06-11ea-8d7e-e4d8007f66a3.png). You should be able to load the slippibot profile to fix this. Working on a fix for this. 
 
 
