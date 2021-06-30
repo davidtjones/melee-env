@@ -39,29 +39,19 @@ def signal_handler(sig, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-# Configure Dolphin for the correct controller setup
+# Configure Dolphin for the correct controller setup, add controllers
+controllers = []
 for idx, player in enumerate(players):
     if player == "HMN":
         d.set_controller_type(idx+1, enums.ControllerType.GCN_ADAPTER)
-    elif player == "AI":
+        controllers.append(melee.Controller(console=console, port=idx+1, type=melee.ControllerType.GCN_ADAPTER))
+    elif player in ["AI", "CPU"]:
         d.set_controller_type(idx+1, enums.ControllerType.STANDARD)
-    elif player == "CPU":
-        d.set_controller_type(idx+1, enums.ControllerType.UNPLUGGED)
+        controllers.append(melee.Controller(console=console, port=idx+1))
     else:  # no player
         d.set_controller_type(idx+1, enums.ControllerType.UNPLUGGED)
 
 menu_control_agent_idx = players.index("AI") if "AI" in players else players.index("CPU")
-
-# Setup Controllers
-controllers = []
-for idx, player in enumerate(players):
-    if player in ["AI", "CPU"]:
-        c = melee.Controller(console=console, port=idx+1)
-    elif player == "HMN":
-        c = melee.Controller(console=console, port=idx+1, type=melee.ControllerType.GCN_ADAPTER) 
-    else:
-        c = None  # unplugged / no player
-    controllers.append(c)
 
 console.run(iso_path=d.iso_path)
 console.connect()
