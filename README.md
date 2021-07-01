@@ -1,7 +1,6 @@
 melee-env
 ---
 
-## About
 This repo contains an implemention of Melee as a Gym-esque environment. 
 
 ### Code sample: 
