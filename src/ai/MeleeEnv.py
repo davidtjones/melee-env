@@ -1,6 +1,7 @@
 from src.setup.dconfig import DolphinConfig
 import melee
 from melee import enums
+import numpy as np
 import code
 
     
@@ -77,7 +78,7 @@ class MeleeEnv:
                             controller=self.players[i].controller,
                             costume=i,
                             swag=False,
-                            cpu_level=1,
+                            cpu_level=self.players[i].lvl,
                             start=False)  # HMN needed to start cpu-only game
 
             elif self.gamestate.menu_state is melee.Menu.STAGE_SELECT:
@@ -101,16 +102,22 @@ class MeleeEnv:
             for i in range(len(self.players)):
                 if self.players[i].agent_type == "AI":
                     # `action` is one of N possible actions an agent can take
-                    # as defined in action_space
+                    #   as defined in action_space
                     controller_input = self.action_space(self.players[i].action)
 
                     # execute must be written to support any action from 
-                    # ActionSpace
+                    #   ActionSpace
                     controller_input.execute(self.players[i].controller)    
 
             self.gamestate = self.console.step()
 
-            return self.observation_space(self.gamestate)
+            observation, reward, done, info = self.observation_space(self.gamestate)
+
+            for i in range(len(self.players)):
+                if self.players[i].defeated == True and len(observation) < len(self.players):
+                    observation = np.insert(observation, i, [-1, -1, -1, 0], axis=0)
+
+            return observation, reward, done, info
         else:
             return None, None, True, None
 

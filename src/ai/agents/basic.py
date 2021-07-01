@@ -8,6 +8,19 @@ class Agent(ABC):
         self.action = None
         self.defeated = False
 
+    def _is_defeated(self, observation):
+        if self.defeated:
+            return True
+        
+        elif observation[3] == 0 and not self.defeated:
+            self.defeated = True
+            self.action = 0
+            print(f"{self} got beat")
+            return True
+
+        else:
+            return False
+
     @abstractmethod
     def act(self):
         pass
@@ -40,14 +53,9 @@ class Random(Agent):
         super().__init__()
         
     def act(self, observation, action_space):
-        if observation[3] == 0 and not self.defeated:
-            self.defeated = True
-            self.action = 0
-            print(f"{self} got beat")
-        else:
+        if not self._is_defeated(observation):
             action = action_space.sample()
             self.action = action
-
 
 
 class Shine(Agent):
@@ -59,10 +67,7 @@ class Shine(Agent):
     def act(self, observation, action_space):
         # lib/melee reports defeated state for 60 frames, then completely drops
         #   the player from reporting
-        if observation[3] == 0 and not self.defeated:
-            self.defeated = True
-            self.action = 0
-        else:
+        if not self._is_defeated(observation):
             action = 0  # none 
 
             if (observation[0] == enums.Action.STANDING.value or 
@@ -75,13 +80,11 @@ class Shine(Agent):
             if observation[0] == enums.Action.KNEE_BEND.value:
 
                 if observation[1] == 3:
-                    print("did we make it here?!")
                     action = 23  # shine again
 
             if (observation[0] == enums.Action.DOWN_B_GROUND.value or 
                 observation[0] == enums.Action.DOWN_B_GROUND_START.value):
                 action = 10  # tap jump
-                print("we jumped! now where are we?")
 
             if observation[2] > 0:
                 action = 0  # don't do crazy things while in hitstun
