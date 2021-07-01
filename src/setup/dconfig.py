@@ -1,7 +1,7 @@
 import configparser
 from pathlib import Path
 from src.config import config
-from melee.enums import ControllerType
+import melee
 
 class DolphinConfig:
     def __init__(self, silent=False):
@@ -67,8 +67,8 @@ class DolphinConfig:
 
         port = int(port)
 
-        if controller_type not in [e for e in ControllerType]:
-            raise ValueError(f"Controller type must be one of {{{[e.name+':'+e.value for e in ControllerType]}}}")
+        if controller_type not in [e for e in melee.enums.ControllerType]:
+            raise ValueError(f"Controller type must be one of {{{[e.name+':'+e.value for e in melee.enums.ControllerType]}}}")
 
         config = configparser.ConfigParser()
         config.readfp(open(self.config_path))

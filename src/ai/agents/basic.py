@@ -1,0 +1,89 @@
+from abc import ABC, abstractmethod
+from melee import enums
+import code
+class Agent(ABC):
+    def __init__(self):
+        self.controller = None
+        self.port = None
+        self.action = None
+        self.defeated = False
+
+    @abstractmethod
+    def act(self):
+        pass
+
+
+class Human(Agent):
+    def __init__(self):
+        self.agent_type = "HMN"
+        super().__init__()
+
+    def act():
+        pass
+
+
+class CPU(Agent):
+    def __init__(self, lvl):
+        self.agent_type = "CPU"
+        if not 1 <= lvl <= 9:
+            raise ValueError(f"Level must be 1-9. Got {lvl}")
+        self.lvl = lvl
+        super().__init__()
+
+    def act():
+        pass
+
+
+class Random(Agent):
+    def __init__(self):
+        self.agent_type = "AI"
+        super().__init__()
+        
+    def act(self, observation, action_space):
+        if observation[3] == 0 and not self.defeated:
+            self.defeated = True
+            self.action = 0
+            print(f"{self} got beat")
+        else:
+            action = action_space.sample()
+            self.action = action
+
+
+
+class Shine(Agent):
+    # refer to action_space.py
+    def __init__(self):
+        self.agent_type = "AI"
+        super().__init__()
+
+    def act(self, observation, action_space):
+        # lib/melee reports defeated state for 60 frames, then completely drops
+        #   the player from reporting
+        if observation[3] == 0 and not self.defeated:
+            self.defeated = True
+            self.action = 0
+        else:
+            action = 0  # none 
+
+            if (observation[0] == enums.Action.STANDING.value or 
+                observation[0] == enums.Action.CROUCH_START.value):
+                action = 5  # crouch
+
+            if observation[0] == enums.Action.CROUCHING.value:
+                action = 23  # down-B (shine)
+
+            if observation[0] == enums.Action.KNEE_BEND.value:
+
+                if observation[1] == 3:
+                    print("did we make it here?!")
+                    action = 23  # shine again
+
+            if (observation[0] == enums.Action.DOWN_B_GROUND.value or 
+                observation[0] == enums.Action.DOWN_B_GROUND_START.value):
+                action = 10  # tap jump
+                print("we jumped! now where are we?")
+
+            if observation[2] > 0:
+                action = 0  # don't do crazy things while in hitstun
+            
+            self.action = action

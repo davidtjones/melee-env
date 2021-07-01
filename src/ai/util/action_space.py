@@ -1,36 +1,8 @@
+import numpy as np
+import melee
+
 class ActionSpace:
     def __init__(self):
-        self.button_space = np.array([0.0, 1.0])
-        self.shoulder_space = np.array([0.0,          # none
-                                        # 0.1,         # light press
-                                        1.0])         # hard press    
-        
-        self.c_stick_space = np.array([[0.0, 0.0],    # center
-                                       [1.0, 0.0],    # right
-                                       [0.0, -1.0],   # down
-                                       [-1.0, 0.0],   # left
-                                       [0.0, 1.0]])   # up
-        
-        # The main control stick is slightly harder as there isn't a simple
-        #   square stick box, so some calculation is needed to find legal 
-        #   values. Also of note, the space of values of the stick needs to
-        #   include no-op, so an odd value must be used on the number of 
-        #   steps. 
-        self.stick_values = np.linspace(-1, 1, (2**3)-1)
-        
-        # create tuples of all possible stick values:
-        self.stick_space_square = np.array(
-            np.meshgrid(self.stick_values, self.stick_values)).T.reshape(-1, 2)
-
-        # These contain illegal values in a circular stick box, you can never
-        #   achieve (1,1), for example. For any values a and b,  a^2 + b^2 > 1 
-        #   are thus illegal. 
-        dist = np.sqrt(
-            self.stick_space_square[:, 0]**2 + self.stick_space_square[:, 1]**2)
-        legal_indices = np.where(dist <= 1)
-
-        self.stick_space_circle = self.stick_space_square[legal_indices]
-
         mid = np.sqrt(2)/2
 
         self.stick_space_reduced = np.array([[0.0, 0.0], # no op
@@ -68,6 +40,58 @@ class ActionSpace:
             self.action_space[int(button)*9:(int(button)+1)*9, :2] = self.stick_space_reduced
             self.action_space[int(button)*9:(int(button)+1)*9, 2] = button
 
+        # self.action_space will look like this, where the first two columns
+        #   represent the control stick's position, and the final column is the 
+        #   currently depressed button. 
+
+        # ACT  Left/Right    Up/Down      Button
+        # ---  ------        ------       ------
+        # 0   [ 0.        ,  0.        ,  0. (NO-OP)] Center  ---
+        # 1   [ 0.        ,  1.        ,  0.        ] Up         |
+        # 2   [ 0.70710678,  0.70710678,  0.        ] Up/Right   |
+        # 3   [ 1.        ,  0.        ,  0.        ] Right      |
+        # 4   [ 0.70710678, -0.70710678,  0.        ] Down/Right |- these repeat
+        # 5   [ 0.        , -1.        ,  0.        ] Down       |
+        # 6   [-0.70710678, -0.70710678,  0.        ] Down/Left  |
+        # 7   [-1.        ,  0.        ,  0.        ] Left       |
+        # 8   [-0.70710678,  0.70710678,  0.        ] Up/Left  ---
+        # 9   [ 0.        ,  0.        ,  1. (A)    ] 
+        # 10  [ 0.        ,  1.        ,  1.        ] 
+        # 11  [ 0.70710678,  0.70710678,  1.        ]
+        # 12  [ 1.        ,  0.        ,  1.        ]
+        # 13  [ 0.70710678, -0.70710678,  1.        ]
+        # 14  [ 0.        , -1.        ,  1.        ]
+        # 15  [-0.70710678, -0.70710678,  1.        ]
+        # 16  [-1.        ,  0.        ,  1.        ]
+        # 17  [-0.70710678,  0.70710678,  1.        ]
+        # 18  [ 0.        ,  0.        ,  2. (B)    ] 
+        # 19  [ 0.        ,  1.        ,  2.        ]
+        # 20  [ 0.70710678,  0.70710678,  2.        ]
+        # 21  [ 1.        ,  0.        ,  2.        ]
+        # 22  [ 0.70710678, -0.70710678,  2.        ]
+        # 23  [ 0.        , -1.        ,  2.        ]
+        # 24  [-0.70710678, -0.70710678,  2.        ]
+        # 25  [-1.        ,  0.        ,  2.        ]
+        # 26  [-0.70710678,  0.70710678,  2.        ]
+        # 27  [ 0.        ,  0.        ,  3. (Z)    ] 
+        # 28  [ 0.        ,  1.        ,  3.        ]
+        # 29  [ 0.70710678,  0.70710678,  3.        ]
+        # 30  [ 1.        ,  0.        ,  3.        ]
+        # 31  [ 0.70710678, -0.70710678,  3.        ]
+        # 32  [ 0.        , -1.        ,  3.        ]
+        # 33  [-0.70710678, -0.70710678,  3.        ]
+        # 34  [-1.        ,  0.        ,  3.        ]
+        # 35  [-0.70710678,  0.70710678,  3.        ] 
+        # 36  [ 0.        ,  0.        ,  4. (R)    ] 
+        # 37  [ 0.        ,  1.        ,  4.        ]
+        # 38  [ 0.70710678,  0.70710678,  4.        ]
+        # 39  [ 1.        ,  0.        ,  4.        ]
+        # 40  [ 0.70710678, -0.70710678,  4.        ]
+        # 41  [ 0.        , -1.        ,  4.        ]
+        # 42  [-0.70710678, -0.70710678,  4.        ]
+        # 43  [-1.        ,  0.        ,  4.        ]
+        # 45  [-0.70710678,  0.70710678,  4.        ]
+
         self.size = self.action_space.shape[0]
 
     def sample(self):
@@ -91,9 +115,9 @@ class ControlState:
             melee.enums.Button.BUTTON_R]
 
     def execute(self, controller):
-        controller.release_all()      # reset everything real quick
-        if self.state[2]:             # no-op, don't press any buttons
-            if self.state[2] != 4.0:  # R shoulder
+        controller.release_all()      
+        if self.state[2]:             # only press button if not no-op
+            if self.state[2] != 4.0:  # special case for r shoulder
                 controller.press_button(self.buttons[int(self.state[2])]) 
             else:
                 controller.press_shoulder(melee.enums.Button.BUTTON_R, 1)

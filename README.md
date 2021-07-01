@@ -8,7 +8,6 @@ This repo contains an implemention of Melee as a Gym-esque environment. It also 
 ### Code sample: 
 ```python
 from src.ai.MeleeEnv import MeleeEnv
-import matplotlib.pyplot as plt
 
 # make the environment
 env = MeleeEnv(fast_forward=False, blocking_input=False) 

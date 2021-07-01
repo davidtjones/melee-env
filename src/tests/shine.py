@@ -24,7 +24,8 @@ d.use_render_interface("vulkan")  # can also be "opengl"
 # Setup console
 console = melee.Console(
     path=str(d.slippi_bin_path),
-    dolphin_home_path=str(d.home)+"/"
+    dolphin_home_path=str(d.home)+"/",
+    blocking_input=False  # for long processing between states
     )
 
 # This isn't necessary, but makes it so that Dolphin will get killed when you ^C

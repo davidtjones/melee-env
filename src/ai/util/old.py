@@ -58,3 +58,35 @@
                         
             else:
                 melee.MenuHelper.choose_versus_mode(self.gamestate, self.controllers['ai'])
+
+# From action space (define the real controller space)
+self.button_space = np.array([0.0, 1.0])
+self.shoulder_space = np.array([0.0,          # none
+                                # 0.1,         # light press
+                                1.0])         # hard press    
+
+self.c_stick_space = np.array([[0.0, 0.0],    # center
+                               [1.0, 0.0],    # right
+                               [0.0, -1.0],   # down
+                               [-1.0, 0.0],   # left
+                               [0.0, 1.0]])   # up
+
+# The main control stick is slightly harder as there isn't a simple
+#   square stick box, so some calculation is needed to find legal 
+#   values. Also of note, the space of values of the stick needs to
+#   include no-op, so an odd value must be used on the number of 
+#   steps. 
+self.stick_values = np.linspace(-1, 1, (2**3)-1)
+
+# create tuples of all possible stick values:
+self.stick_space_square = np.array(
+    np.meshgrid(self.stick_values, self.stick_values)).T.reshape(-1, 2)
+
+# These contain illegal values in a circular stick box, you can never
+#   achieve (1,1), for example. For any values a and b,  a^2 + b^2 > 1 
+#   are thus illegal. 
+dist = np.sqrt(
+    self.stick_space_square[:, 0]**2 + self.stick_space_square[:, 1]**2)
+legal_indices = np.where(dist <= 1)
+
+self.stick_space_circle = self.stick_space_square[legal_indices]
