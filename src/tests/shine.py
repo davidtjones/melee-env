@@ -99,24 +99,7 @@ while True:
 
         # multishine constantly
         for fox_state, controller in data:
-            if fox_state.action in [enums.Action.STANDING]:
-                controller.tilt_analog_unit(enums.Button.BUTTON_MAIN, 0, -1)
-
-            if fox_state.action in [enums.Action.CROUCHING]:
-                controller.release_button(enums.Button.BUTTON_Y)
-                controller.press_button(enums.Button.BUTTON_B)
-
-            if fox_state.action == enums.Action.KNEE_BEND:
-                if fox_state.action_frame == 3:
-                    controller.release_button(enums.Button.BUTTON_Y)
-                    controller.press_button(enums.Button.BUTTON_B)
-
-            if fox_state.action == enums.Action.DOWN_B_GROUND:
-                controller.release_button(enums.Button.BUTTON_B)
-                controller.press_button(enums.Button.BUTTON_Y)
-
-            if fox_state.hitstun_frames_left > 0:
-                controller.release_all()
+            melee.techskill(fox_state, controller)
 
     else:
         melee.MenuHelper.choose_versus_mode(gamestate, controllers[menu_control_agent_idx])

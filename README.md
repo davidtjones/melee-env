@@ -1,9 +1,9 @@
-actor-critic bot
+melee-env
 ---
 (temp name)
 
 ## About
-This repo contains an implemention of Melee as a Gym-esque environment. It also includes a bad actor critic agent implemented on this environment. 
+This repo contains an implemention of Melee as a Gym-esque environment. 
 
 ### Code sample: 
 ```python
