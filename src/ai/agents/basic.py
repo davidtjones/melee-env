@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from melee import enums
-import code
+
 class Agent(ABC):
     def __init__(self):
         self.controller = None

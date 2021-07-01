@@ -11,7 +11,6 @@ from src.ai.MeleeEnv import MeleeEnv
 from src.ai.util.observation_space import ObservationSpace
 from src.ai.util.action_space import ActionSpace
 from src.ai.agents.basic import *
-import numpy as np
 
 # Setup the Agents, Melee supports 2-4 players
 players = [Human(), Shine(), Random(), CPU(8)]

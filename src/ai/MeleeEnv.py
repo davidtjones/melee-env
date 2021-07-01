@@ -2,8 +2,6 @@ from src.setup.dconfig import DolphinConfig
 import melee
 from melee import enums
 import numpy as np
-import code
-
     
 class MeleeEnv:
     def __init__(self, 
