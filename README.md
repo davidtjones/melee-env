@@ -1,6 +1,5 @@
 melee-env
 ---
-(temp name)
 
 ## About
 This repo contains an implemention of Melee as a Gym-esque environment. 
