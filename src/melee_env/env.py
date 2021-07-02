@@ -5,6 +5,7 @@ import numpy as np
     
 class MeleeEnv:
     def __init__(self, 
+        iso_path,
         players,
         action_space,
         observation_space,
@@ -15,6 +16,7 @@ class MeleeEnv:
         self.d = DolphinConfig()
         self.d.set_ff(fast_forward)
 
+        self.iso_path = iso_path
         self.players = players
 
         self.action_space = action_space 
@@ -29,7 +31,7 @@ class MeleeEnv:
     def start(self):
         self.console = melee.Console(
             path=str(self.d.slippi_bin_path),
-            dolphin_home_path=str(self.d.home)+"/",
+            dolphin_home_path=str(self.d.slippi_home)+"/",
             blocking_input=self.blocking_input)  # broken in 0.21.0
 
         # Configure Dolphin for the correct controller setup, add controllers
@@ -48,7 +50,7 @@ class MeleeEnv:
             else:  # no player
                 self.d.set_controller_type(i+1, enums.ControllerType.UNPLUGGED)
         
-        self.console.run(iso_path=self.d.iso_path)
+        self.console.run(iso_path=self.iso_path)
         self.console.connect()
 
 
