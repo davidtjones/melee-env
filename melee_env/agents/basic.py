@@ -3,6 +3,7 @@ from melee import enums
 
 class Agent(ABC):
     def __init__(self):
+        self.agent_type = None
         self.controller = None
         self.port = None
         self.action = None
@@ -25,33 +26,38 @@ class Agent(ABC):
     def act(self):
         pass
 
+class AgentChooseCharacter(Agent):
+    def __init__(self, character):
+        super().__init__()
+        self.character = character
+        
 
 class Human(Agent):
     def __init__(self):
-        self.agent_type = "HMN"
         super().__init__()
-
+        self.agent_type = "HMN"
+        
     def act():
         pass
 
 
-class CPU(Agent):
-    def __init__(self, lvl):
+class CPU(AgentChooseCharacter):
+    def __init__(self, character, lvl):
+        super().__init__(character)
         self.agent_type = "CPU"
         if not 1 <= lvl <= 9:
-            raise ValueError(f"Level must be 1-9. Got {lvl}")
+            raise ValueError(f"CPU Level must be 1-9. Got {lvl}")
         self.lvl = lvl
-        super().__init__()
-
+        
     def act():
         pass
 
 
-class Random(Agent):
-    def __init__(self):
+class Random(AgentChooseCharacter):
+    def __init__(self, character):
+        super().__init__(character)
         self.agent_type = "AI"
-        super().__init__()
-        
+           
     def act(self, observation, action_space):
         if not self._is_defeated(observation):
             action = action_space.sample()
@@ -61,9 +67,10 @@ class Random(Agent):
 class Shine(Agent):
     # refer to action_space.py
     def __init__(self):
-        self.agent_type = "AI"
         super().__init__()
-
+        self.agent_type = "AI"
+        self.character = enums.Character.FOX
+        
     def act(self, observation, action_space):
         # lib/melee reports defeated state for 60 frames, then completely drops
         #   the player from reporting

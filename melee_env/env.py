@@ -58,14 +58,14 @@ class MeleeEnv:
 
         self.gamestate = self.console.step()
  
-    def setup(self):
+    def setup(self, stage):
         while True:
             self.gamestate = self.console.step()
             if self.gamestate.menu_state is melee.Menu.CHARACTER_SELECT:
                 for i in range(len(self.players)):
                     if self.players[i].agent_type == "AI":
                         melee.MenuHelper.choose_character(
-                            character=melee.enums.Character.FOX,
+                            character=self.players[i].character,
                             gamestate=self.gamestate,
                             controller=self.players[i].controller,
                             costume=i,
@@ -73,7 +73,7 @@ class MeleeEnv:
                             start=self.ai_starts_game)
                     if self.players[i].agent_type == "CPU":
                         melee.MenuHelper.choose_character(
-                            character=enums.Character.FOX,
+                            character=self.players[i].character,
                             gamestate=self.gamestate,
                             controller=self.players[i].controller,
                             costume=i,
@@ -83,7 +83,7 @@ class MeleeEnv:
 
             elif self.gamestate.menu_state is melee.Menu.STAGE_SELECT:
                 melee.MenuHelper.choose_stage(
-                    stage=melee.enums.Stage.FINAL_DESTINATION,
+                    stage=stage,
                     gamestate=self.gamestate,
                     controller=self.players[self.menu_control_agent].controller)
 
@@ -115,7 +115,7 @@ class MeleeEnv:
 
             for i in range(len(self.players)):
                 if self.players[i].defeated == True and len(observation) < len(self.players):
-                    observation = np.insert(observation, i, [-1, -1, -1, 0], axis=0)
+                    observation = np.insert(observation, i, np.full(observation.shape[1], -1), axis=0)
 
             return observation, reward, done, info
         else:
