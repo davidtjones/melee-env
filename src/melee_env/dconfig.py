@@ -1,0 +1,246 @@
+import configparser
+from pathlib import Path
+from src.config import config
+import melee
+from sys import platform
+
+class DolphinConfig:
+    def __init__(self):
+        self.config = config
+
+        # setup paths
+        self.home = pathlib.Path.home()
+        self.platform = sys.platform
+        
+        self.module_path = Path(__file__).resolve()  # module installation path
+        self.install_data_path = self.module_path / "install_data"
+
+        if self.platform == "win32":
+            self.data_path = self.home / "AppData/Roaming"
+        elif self.platform == "linux":
+            self.data_path = self.home / ".local/share"
+        elif self.platform == "darwin":
+            self.data_path = self.home / "Library/Application Support"
+
+        self.slippi_path = self.data_path / "Slippi"
+
+        self.slippi_replays_path = self.slippi_path / "replays"
+        self.slippi_bin_path = self.slippi_path / "squashfs-root/usr/bin"
+        self.config_path = self.slippi_path / "data/Config/Dolphin.ini"
+
+        self.slippi_gecko_ini_path = self.slippi_bin_path / "Sys/GameSettings/GALE01r2.ini"
+
+        self.install_data_path = melee_env
+
+        # check that our local slippi is installed
+        if not slippi_bin_path.exists():
+            # assume this is a new installation?
+
+            # need to download slippi (based on platform!)
+            self.install_slippi(self.slippi_path)
+
+            # download gecko codes for slippi
+            self.apply_gecko_codes(self.slippi_path)
+
+            # extra configuration steps
+            self.configure_dolphin(self.slippi_path)
+
+        else:
+            # check for updates? might be nice to preserve the current install
+            # in case things break. 
+            pass
+
+
+    def use_render_interface(self, interface="opengl"):
+        """Edit config to use Vulkan instead of default OpenGL"""
+        if interface not in ["vulkan", "opengl"]:
+            raise ValueError("unsupported render interface, please select "
+                "either 'vulkan' or 'opengl'")
+
+        if interface == "vulkan":
+            config = configparser.ConfigParser()
+            config.readfp(open(self.config_path))
+            config['Core']['gfxbackend'] = "Vulkan"
+        else:
+            config = configparser.ConfigParser()
+            config.readfp(open(self.config_path))
+            config['Core']['gfxbackend'] = ""
+
+            with open(str(self.config_path), 'w') as outfile:
+                config.write(outfile)
+
+        return
+
+    def set_ff(self, enable=True):
+        """Edit GALE01r2.ini to enable fast forward. Useful for faster training"""
+        with open(str(self.gecko_codes_path), 'r') as f:
+            data = f.readlines()
+
+        if "Fast Forward" not in data[18]:
+            exit(f"Error: cannot locate Fast Forward Gecko code in "
+                 "{self.gecko_codes_path}, please ensure it is located in this "
+                 "file, and that it is on line 19!")
+
+        if data[18][0] == "-" and enable: 
+            data[18] = "$Optional: Fast Forward\n"
+            with open(str(self.gecko_codes_path), 'w') as f:
+                f.writelines(data)
+
+        elif data[18][0] == "$" and not enable:
+            data[18] = "-Optional: Fast Forward\n"
+            with open(str(self.gecko_codes_path), 'w') as f:
+                f.writelines(data)
+
+        return
+
+    def set_controller_type(self, port, controller_type):
+        if  not (1 <= int(port) <= 4):
+            raise ValueError(f"Port must be 1, 2, 3, or 4. Received value {port}")
+
+        port = int(port)
+
+        if controller_type not in [e for e in melee.enums.ControllerType]:
+            raise ValueError(f"Controller type must be one of {{{[e.name+':'+e.value for e in melee.enums.ControllerType]}}}")
+
+        config = configparser.ConfigParser()
+        config.readfp(open(self.config_path))
+        config['Core'][f'sidevice{str(port-1)}'] = f"{controller_type.value}"
+
+        with open(str(self.config_path), 'w') as outfile:
+            config.write(outfile)
+
+        return
+
+
+    def _download_file(url):
+        local_filename = url.split('/')[-1]
+        # NOTE the stream=True parameter below
+        with requests.get(url, stream=True) as r:
+            total_size_in_bytes= int(r.headers.get('content-length', 0))
+            progress_bar = tqdm(
+                total=total_size_in_bytes, 
+                unit='iB', 
+                unit_scale=True,
+                desc=f"Downloading {local_filename}")
+
+            r.raise_for_status()
+            with open(local_filename, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192): 
+                    progress_bar.update(len(chunk))
+                    f.write(chunk)
+
+        progress_bar.close()
+        return Path(local_filename).resolve()
+
+    def install_slippi(self, install_path):
+        if self.platform == "linux"
+            target_url = "https://github.com/project-slippi/Ishiiruka/releases/latest/download/Slippi_Online-x86_64.AppImage"
+
+        elif self.platform == "win32":
+            target_url = "https://github.com/project-slippi/Ishiiruka/releases/latest/download/Slippi_Online-x86_64.zip"
+            raise NotImplementedError("Windows currently not supported at this time.")
+
+        elif self.platform == "darwin":
+            target_url = "https://github.com/project-slippi/Ishiiruka/releases/download/v2.3.1/FM-Slippi-2.3.1-Mac.dmg"
+            raise NotImplementedError("OSX currently not supported at this time.")
+
+        install_dir.mkdir(parents=True, exist_ok=True)
+
+        # Download latest version of slippi
+        slippi_game_path = _download_file(target_url)
+
+        # move to our directory
+        slippi_game_path.rename(install_path / slippi_game_path.name)
+        slippi_game_path = install_path / slippi_game_path.name
+
+        if self.platform == "linux":
+            # Set as executable
+            slippi_game_path.chmod(509)
+
+            os.chdir(str(slippi_game_path.parents[0]))
+            cmd_extract = f"{appimg_path} --appimage-extract"
+
+            # Extract 
+            process = subprocess.Popen(cmd_extract.split(), stdout=subprocess.PIPE)
+            output, error = process.communicate()
+
+            # Delete executable
+            appimg_path.unlink()
+
+        if self.platform == "win32":
+            # unzip the archive, etc. See libmelee readme
+            pass
+
+    def apply_gecko_codes(self, install_path):
+        # get most up-to-date codes:
+        gale01r2_url = "https://raw.githubusercontent.com/altf4/slippi-ssbm-asm/libmelee/Output/Netplay/GALE01r2.ini"
+        gale01r2_path = _download_file(gale01r2_url)
+
+        # Rename the old ini file
+        self.slippi_gecko_ini_path.rename(self.slippi_gecko_ini_path.parents[0] / "GALE01r2.ini.old")
+
+        # Copy the required codes to the old location
+        dest = shutil.copy(str(gale01r2_path), str(self.slippi_gecko_ini_path))
+
+        # Add the fastforward code at the end of this file:
+        fast_forward = open(self.install_data_path / "fast_forward").read()
+        with open(str(self.slippi_gecko_ini_path), 'a') as f:
+            f.write("\n")
+            f.write(fast_forward)
+
+        # Add the fast forward code to the [Gecko_Enabled] section
+        with open(str(self.slippi_gecko_ini_path), 'r') as f:
+            data = f.readlines()
+
+        # Surely the below can be done more cleanly with configparser
+        # turn off recommended: apply delay to all in-game scenes
+        if data[13] == "$Recommended: Apply Delay to all In-Game Scenes\n":
+            data[13] = "-" + data[13][1:]  # turn this off
+
+        # check that line 15 is empty before we start adding stuff
+        if data[14] != "\n":
+            exit("Something has gone wrong... check that {slippi_gecko_ini} exists and matches the one found in src/extra")
+
+        data.insert(14, "-Optional: Fast Forward\n")
+        data.insert(14, "-Optional: Flash Red on Failed L-Cancel\n")
+        data.insert(14, "$Optional: Center Align 2P HUD\n")
+        data.insert(14, "$Optional: Disable Screen Shake\n")
+        data.insert(14, "-Optional: Widescreen 16:9\n")
+
+        with open(str(slippi_gecko_ini), 'w') as f:
+            f.writelines(data)
+
+        # cleanup
+        gale01r2_path.unlink()
+
+    def configure_dolphin(self, install_path):
+
+        if not self.config_path.exists():
+            exit(f"Error: no Slippi Config. Run Slippi Online once to generate these files"
+                 f"Then confirm that files exist in {self.config_path}")
+        else:
+            print("Found dolphin config")
+
+        config = configparser.ConfigParser()
+        config.read_file(open(self.config_path))
+        config['Core']['SlippiReplayDir'] = str(self.slippi_replays_path)
+        config['Core']['SlippiReplayMonthFolders'] = "True"
+
+        with open(str(self.config_path), 'w') as outfile:
+            config.write(outfile)
+         
+        # Link this config to the extracted dolphin
+        user_path = self.slippi_bin_path / "User"
+        user_path.mkdir(parents=True, exist_ok=True)
+
+        config_path = user_path / "Config"
+
+        if self.platform == "linux"
+            config_path.symlink_to(root / "Slippi/data/Config")
+
+        # Move GCPadNew.ini to this location
+        shutil.copy(
+            str(self.install_data_path / "GCPadNew.ini"), 
+            str(self.config_path / "GCPadNew.ini")
+            )
+

@@ -1,4 +1,4 @@
-from src.setup.dconfig import DolphinConfig
+from melee_env.dconfig import DolphinConfig
 import melee
 from melee import enums
 import numpy as np

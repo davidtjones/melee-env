@@ -137,15 +137,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Project Specific
-src/config.py
-src/extra/GALE01r2.ini
-*Slippi_Online-x86_64.AppImage*
-*Slippi-Launcher*
-*squashfs-root*
-src/Slippi/replays/*
-src/Slippi/data/*
-*.pt 
+# melee-env
+
 
 
 

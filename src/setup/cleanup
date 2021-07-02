@@ -1,5 +1,0 @@
-rm config.py
-rm extra/GALE01r2.ini
-rm -rf Slippi/squashfs-root
-rm -rf Slippi/Slippi*
-rm -rf Slippi/data

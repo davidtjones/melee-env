@@ -5,10 +5,9 @@ This repo contains an implemention of Melee as a Gym-esque environment.
 
 ### Code sample: 
 ```python
-from src.ai.MeleeEnv import MeleeEnv
-from src.ai.util.observation_space import ObservationSpace
-from src.ai.util.action_space import ActionSpace
-from src.ai.agents.basic import *
+from melee_env.env import MeleeEnv
+from melee_env.agents.util import ObservationSpace, ActionSpace
+from melee.agents.basic import *
 
 # Setup the Agents, Melee supports 2-4 players
 players = [Human(), Shine(), Random(), CPU(8)]
@@ -48,6 +47,9 @@ This library requires Slippi, which in turn requires an SSBM 1.02 NTSC/PAL ISO. 
 4. Run `python setup/genconfig.py`. Optionally pass in your (legally obtained) ISO via `--iso=path/to/iso` to load the ISO on startup (highly recommended). 
 5. (Optional) Test your installation. Run `python tests/shine.py`. You can run `python tests/agent_test.py` if you have a gamecube controller and a gamecube controller USB adapter, or change the `Human` agent on line 8 to some other agent.
 
+## Platform support
+* Linux
+* Windows (planned)
 
 Some notes:
 * If you notice that controllers aren't working, check the config in dolphin and verify that the controller profile is setup correctly. The automation steps should take care of this. You can verify the controller config for the bot is correct by checking Controllers -> [port X] -> Configure and verifying that the resulting window looks like [this](https://user-images.githubusercontent.com/609563/86555862-7dd45d80-bf06-11ea-8d7e-e4d8007f66a3.png). You should be able to load the slippibot profile to fix this. Working on a fix for this.
