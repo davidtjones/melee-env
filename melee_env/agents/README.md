@@ -4,7 +4,7 @@ This will be an intermediary until there is a need to make better docs. Currentl
 ## Agents
 Agents should inherit from at least the base `Agent` class. If your agent needs to choose different characters, inherit from the `AgentChooseCharacter` class and pass the correct enum as a parameter on initialization. Either way, make sure the `character` attribute is not `None`. 
 
-Agents should always implement the `act` method. Act requires two parameters - an observation (from the observation space) and the set of available actions (the action space). The `Random` agent and the `Shine` agent are useful to seeing how the action and observation spaces are used. 
+Agents should always implement the `act` method. Act requires two parameters - an observation (from the observation space) and the set of available actions (the action space). Note that `act` does not return the action but just sets the `action` attribute. The `Random` agent and the `Shine` agent are useful to seeing how the action and observation spaces are used. 
 
 ## Observation Space
 Observation spaces give agents information about the world around them. melee-env's `ObservationSpace` class provides a convenient way to translate libmelee's `gamestate` into a matrix data to be consumed by agents. `ObservationSpace.__call__` consumes libmelee's gamestate, and this function must return a numpy array with shape [P, C], where P is the number of players and C is the number of observed attributes (channels). Ideally this form is perfect for sending directly to popular learning frameworks, like TensorFlow or PyTorch, but is still flexible enough for other usage. See the example `ObservationSpace` in `util.py`. 

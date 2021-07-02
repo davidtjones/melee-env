@@ -84,10 +84,8 @@ class Shine(Agent):
             if observation[0] == enums.Action.CROUCHING.value:
                 action = 23  # down-B (shine)
 
-            if observation[0] == enums.Action.KNEE_BEND.value:
-
-                if observation[1] == 3:
-                    action = 23  # shine again
+            if observation[0] == enums.Action.KNEE_BEND.value and observation[1] == 3:
+                    action = 23  # shine again on frame 3 of knee bend.
 
             if (observation[0] == enums.Action.DOWN_B_GROUND.value or 
                 observation[0] == enums.Action.DOWN_B_GROUND_START.value):
