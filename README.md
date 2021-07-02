@@ -3,49 +3,46 @@ melee-env
 
 This repo contains an implemention of Melee as a Gym-esque environment. 
 
-### Code sample: 
+### Code example: 
 ```python
 from melee_env.env import MeleeEnv
 from melee_env.agents.util import ObservationSpace, ActionSpace
-from melee.agents.basic import *
+from melee_env.agents.basic import *
 
 # Setup the Agents, Melee supports 2-4 players
-players = [Human(), Shine(), Random(), CPU(8)]
+players = [Human(), Shine(), Random(), CPU(3)]
 
 # make the environment
 env = MeleeEnv(
+    "path/to/iso",
     players,
     ActionSpace(),
     ObservationSpace(),
     fast_forward=False, 
     blocking_input=True)
 
-episode_count = 100
-reward = 0
-done = False
+episodes = 10; reward = 0; done = False
 
-env.start(); observation, reward, done, info = env.setup()
+env.start()
+observation, reward, done, info = env.setup()
 
-while not done:
-    print(observation)
-    for i in range(len(players)):
-        if players[i].agent_type == "AI":
-            players[i].act(observation[i], env.action_space)
+for episode in range(episodes):
+    while not done:
+        print(observation)
+        for i in range(len(players)):
+            if players[i].agent_type == "AI":  # only process AI players
+                players[i].act(observation[i], env.action_space)
 
-    observation, reward, done, info = env.step()
-
+        observation, reward, done, info = env.step()
+        
 ```
 This library has been designed with flexibility in mind. The action and observation spaces are completely modular, and custom spaces are supported. 
 
 ## Note
 This library requires Slippi, which in turn requires an SSBM 1.02 NTSC/PAL ISO. This library does not and will not distribute this. You must acquire this on your own!
 
-## Setup
-1. `cd ac-bot`
-2. Conda recommended. Install from `environment.yml`. Complete environment installation by adding `src` to the environment with `pip install -e .`
-3. cd `src`
-4. Run `python setup/genconfig.py`. Optionally pass in your (legally obtained) ISO via `--iso=path/to/iso` to load the ISO on startup (highly recommended). 
-5. (Optional) Test your installation. Run `python tests/shine.py`. You can run `python tests/agent_test.py` if you have a gamecube controller and a gamecube controller USB adapter, or change the `Human` agent on line 8 to some other agent.
+## Installation
+Install from pip: `pip install melee-env`. Test by running the above example. 
 
 ## Platform support
 * Linux

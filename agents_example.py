@@ -7,6 +7,7 @@ players = [Human(), Shine(), Random(), CPU(3)]
 
 # make the environment
 env = MeleeEnv(
+    "path/to/iso",
     players,
     ActionSpace(),
     ObservationSpace(),
