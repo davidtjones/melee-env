@@ -10,7 +10,7 @@ from melee_env.agents.util import ObservationSpace, ActionSpace
 from melee_env.agents.basic import *
 
 # Setup the Agents, Melee supports 2-4 players
-players = [Human(), Shine(), Random(), CPU(3)]
+players = [Human(), Shine(), Random(enums.Character.FALCO), CPU(enums.Character.LINK, 3)]
 
 # make the environment
 env = MeleeEnv(
@@ -22,11 +22,10 @@ env = MeleeEnv(
     blocking_input=True)
 
 episodes = 10; reward = 0; done = False
-
 env.start()
-observation, reward, done, info = env.setup()
 
 for episode in range(episodes):
+    observation, reward, done, info = env.setup(enums.Stage.BATTLEFIELD)
     while not done:
         print(observation)
         for i in range(len(players)):
