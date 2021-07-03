@@ -33,7 +33,7 @@ for episode in range(episodes):
 
         observation, reward, done, info = env.step()        
 ```
-This library has been designed with flexibility in mind. The action space, observation space, and the agents are completely modular, and there are only a few requirements to build your own. For more information on these topics, see the README in the agents folder.
+This library has been designed with flexibility in mind. The action space, observation space, and the agents are completely modular, and there are only a few requirements to build your own. For more information on these topics, see the [README](melee_env/agents/README.md) in the agents folder.
 
 ## Note
 This library requires Slippi, which in turn requires an SSBM 1.02 NTSC/PAL ISO. This library does not and will not distribute this. You must acquire this on your own!

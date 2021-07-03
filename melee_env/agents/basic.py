@@ -14,7 +14,7 @@ def is_defeated(f):
 
 class Agent(ABC):
     def __init__(self):
-        self.agent_type = None
+        self.agent_type = "AI"
         self.controller = None
         self.port = None
         self.action = None
@@ -53,10 +53,18 @@ class CPU(AgentChooseCharacter):
         pass
 
 
+class NOOP(AgentChooseCharacter):
+    def __init__(self, character):
+        super().__init__(character)
+
+    @is_defeated
+    def act(self, observation, action_space):
+        self.action = 0
+
+
 class Random(AgentChooseCharacter):
     def __init__(self, character):
         super().__init__(character)
-        self.agent_type = "AI"
         
     @is_defeated
     def act(self, observation, action_space):
@@ -69,7 +77,6 @@ class Shine(Agent):
     # refer to action_space.py
     def __init__(self):
         super().__init__()
-        self.agent_type = "AI"
         self.character = enums.Character.FOX
     
     @is_defeated
@@ -104,7 +111,6 @@ class Rest(Agent):
     # This agent will target the nearest player, move to them, and rest
     def __init__(self):
         super().__init__()
-        self.agent_type = "AI"
         self.character = enums.Character.JIGGLYPUFF
 
     @is_defeated

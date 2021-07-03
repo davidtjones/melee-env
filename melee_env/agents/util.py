@@ -4,7 +4,6 @@ import melee
 
 class ObservationSpace:
     def __init__(self):
-        self.size = 18  # better way to set this?
         self.current_frame = 0
         self.done = False
         self.previous_gamestate = None
@@ -18,20 +17,20 @@ class ObservationSpace:
 
     def get_stocks(self):
         stocks = [self.current_gamestate.players[i].stock for i in list(self.current_gamestate.players.keys())]
-        return np.array([stocks]).T #playersx1
+        return np.array([stocks]).T  # players x 1
     
     def get_actions(self):
         actions = [self.current_gamestate.players[i].action.value for i in list(self.current_gamestate.players.keys())]
         action_frames = [self.current_gamestate.players[i].action_frame for i in list(self.current_gamestate.players.keys())]
         hitstun_frames_left = [self.current_gamestate.players[i].hitstun_frames_left for i in list(self.current_gamestate.players.keys())]
         
-        return np.array([actions, action_frames, hitstun_frames_left]).T # playersx3
+        return np.array([actions, action_frames, hitstun_frames_left]).T # players x 3
 
     def get_positions(self):
         x_positions = [self.current_gamestate.players[i].x for i in list(self.current_gamestate.players.keys())]
         y_positions = [self.current_gamestate.players[i].y for i in list(self.current_gamestate.players.keys())]
 
-        return np.array([x_positions, y_positions]).T #players x 2
+        return np.array([x_positions, y_positions]).T  # players x 2
 
     def __call__(self, gamestate):
         """ pull out relevant info from gamestate """
