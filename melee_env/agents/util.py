@@ -17,16 +17,22 @@ class ObservationSpace:
         self.current_gamestate = None
 
     def get_stocks(self):
-        stocks = [self.current_gamestate.player[i].stock for i in list(self.current_gamestate.player.keys())]
+        stocks = [self.current_gamestate.players[i].stock for i in list(self.current_gamestate.players.keys())]
         return np.array([stocks]).T #playersx1
     
     def get_actions(self):
-        actions = [self.current_gamestate.player[i].action.value for i in list(self.current_gamestate.player.keys())]
-        action_frames = [self.current_gamestate.player[i].action_frame for i in list(self.current_gamestate.player.keys())]
-        hitstun_frames_left = [self.current_gamestate.player[i].hitstun_frames_left for i in list(self.current_gamestate.player.keys())]
+        actions = [self.current_gamestate.players[i].action.value for i in list(self.current_gamestate.players.keys())]
+        action_frames = [self.current_gamestate.players[i].action_frame for i in list(self.current_gamestate.players.keys())]
+        hitstun_frames_left = [self.current_gamestate.players[i].hitstun_frames_left for i in list(self.current_gamestate.players.keys())]
         
         return np.array([actions, action_frames, hitstun_frames_left]).T # playersx3
-        
+
+    def get_positions(self):
+        x_positions = [self.current_gamestate.players[i].x for i in list(self.current_gamestate.players.keys())]
+        y_positions = [self.current_gamestate.players[i].y for i in list(self.current_gamestate.players.keys())]
+
+        return np.array([x_positions, y_positions]).T #players x 2
+
     def __call__(self, gamestate):
         """ pull out relevant info from gamestate """
         self.current_gamestate = gamestate
@@ -34,8 +40,10 @@ class ObservationSpace:
         total_reward = 0
         info = None
         
+        positions = self.get_positions()
         actions = self.get_actions()
         stocks = self.get_stocks()
+
 
         # if 0 <= actions[0][0] <= 10:  # DEAD_DOWN, DEAD_LEFT ... 
         #     info = "dead"
@@ -57,7 +65,7 @@ class ObservationSpace:
             self.previous_gamestate = self.current_gamestate
 
         
-        observation = np.concatenate((actions, stocks), axis=1)
+        observation = np.concatenate((positions, actions, stocks), axis=1)
 
         return observation, total_reward, self.done, info
 

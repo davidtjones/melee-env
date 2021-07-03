@@ -50,15 +50,20 @@ class MeleeEnv:
             else:  # no player
                 self.d.set_controller_type(i+1, enums.ControllerType.UNPLUGGED)
         
+        if self.ai_starts_game:
+            self.players[i].press_start = True
+
         self.console.run(iso_path=self.iso_path)
         self.console.connect()
-
 
         [player.controller.connect() for player in self.players if player is not None]
 
         self.gamestate = self.console.step()
  
     def setup(self, stage):
+        for player in self.players:
+            player.defeated = False
+            
         while True:
             self.gamestate = self.console.step()
             if self.gamestate.menu_state is melee.Menu.CHARACTER_SELECT:
@@ -70,7 +75,7 @@ class MeleeEnv:
                             controller=self.players[i].controller,
                             costume=i,
                             swag=False,
-                            start=self.ai_starts_game)
+                            start=self.players[i].press_start)
                     if self.players[i].agent_type == "CPU":
                         melee.MenuHelper.choose_character(
                             character=self.players[i].character,
@@ -79,7 +84,7 @@ class MeleeEnv:
                             costume=i,
                             swag=False,
                             cpu_level=self.players[i].lvl,
-                            start=False)  # HMN needed to start cpu-only game
+                            start=self.players[i].press_start)  
 
             elif self.gamestate.menu_state is melee.Menu.STAGE_SELECT:
                 melee.MenuHelper.choose_stage(
