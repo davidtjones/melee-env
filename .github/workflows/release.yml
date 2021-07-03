@@ -1,5 +1,7 @@
 name: Publish melee-env to pypi and testpypi
 on: release
+
+jobs:
   publish:
     name: Build and publish to Pypi
     runs-on: ubuntu-18.04
