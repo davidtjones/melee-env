@@ -2,14 +2,19 @@ from abc import ABC, abstractmethod
 from melee import enums
 import numpy as np
 
+
 def is_defeated(f):
 # libmelee/slippi reports defeated state for 60 frames, then completely 
 #   drops the player from reporting. We need to know when the player is defeated
 #   so that a row can be added back to the observation list to keep the size
 #   consistent. This helps avoid certain wonky behavior. 
     def wrapper(self, *args):
-        if not self.defeated and args[0][self.port-1, -1] != 0:
-            return f(self, *args) 
+        self.self_observation = args[0][self.port-1]
+        if not self.defeated and self.self_observation[-1] != 0:
+            return f(self, *args)
+        elif not self.defeated and self.self_observation[-1] == 0:
+            self.defeated = True
+            print(f"{self} was defeated")
     return wrapper
 
 class Agent(ABC):
@@ -17,8 +22,9 @@ class Agent(ABC):
         self.agent_type = "AI"
         self.controller = None
         self.port = None
-        self.action = None
+        self.action = 0
         self.press_start = False
+        self.self_observation = None
     
     @abstractmethod
     def act(self):
@@ -36,7 +42,7 @@ class Human(Agent):
         self.agent_type = "HMN"
     
     @is_defeated
-    def act():
+    def act(self, observation, action_space):
         pass
 
 
@@ -49,7 +55,7 @@ class CPU(AgentChooseCharacter):
         self.lvl = lvl
     
     @is_defeated  
-    def act():
+    def act(self, observation, action_space):
         pass
 
 
@@ -83,28 +89,27 @@ class Shine(Agent):
     def act(self, observation, action_space):
         #if not self.is_defeated(observation):
         action = 0  # none 
-        fox_state = observation[self.port-1][2]
-        fox_frames = observation[self.port-1][3]
-        fox_hitstun = observation[self.port-1][4]
+        state, frames, hitstun = observation[self.port-1][2:5]
 
-        if (fox_state == enums.Action.STANDING.value or 
-            fox_state == enums.Action.CROUCH_START.value):
+        if (state == enums.Action.STANDING.value or 
+            state == enums.Action.CROUCH_START.value):
             action = 5  # crouch
 
-        if fox_state == enums.Action.CROUCHING.value:
+        if state == enums.Action.CROUCHING.value:
             action = 23  # down-B (shine)
 
-        if fox_state == enums.Action.KNEE_BEND.value and fox_frames == 3:
+        if state == enums.Action.KNEE_BEND.value and frames == 3:
                 action = 23  # shine again on frame 3 of knee bend.
 
-        if (fox_state == enums.Action.DOWN_B_GROUND.value or 
-            fox_state == enums.Action.DOWN_B_GROUND_START.value):
+        if (state == enums.Action.DOWN_B_GROUND.value or 
+            state == enums.Action.DOWN_B_GROUND_START.value):
             action = 10  # tap jump
 
-        if fox_hitstun > 0:
+        if hitstun > 0:
             action = 0  # don't do crazy things while in hitstun
 
         self.action = action
+
 
 class Rest(Agent):
     # adapted from AltF4's tutorial video: https://www.youtube.com/watch?v=1R723AS1P-0
@@ -115,18 +120,36 @@ class Rest(Agent):
 
     @is_defeated
     def act(self, observation, action_space):
-        # find the nearest player
+        # In order to make Rest-bot work for any number of players, it needs to 
+        #   select a target. In this code, a target is selected by identifying
+        #   the closest player who is not currently defeated/respawning. We 
+        #   could use stage boundaries as defined in melee.stages but that would
+        #   limit rest-bot to only working on tournament-legal stages. 
+
         curr_position = observation[self.port-1, :2]
         positions_centered = observation[:, :2] - curr_position
 
         # distance formula
         distances = np.sqrt(np.sum(positions_centered**2, axis=1))
-        closest = np.argsort(np.sqrt(np.sum(positions_centered**2, axis=1)))[1]  # this could be dangerous
+        closest_sort = np.argsort(np.sqrt(np.sum(positions_centered**2, axis=1)))  
 
-        if distances[closest] < 4:
+        actions = observation[:, 2]
+        actions_by_closest = actions[closest_sort]
+
+        # select closest player who isn't dead
+        closest = 0
+        for i in range(len(observation)):
+            if actions_by_closest[i] >= 14 and i != 0:
+                closest = closest_sort[i]
+                break
+
+        if closest == self.port-1:  # nothing to target
+            action = 0
+
+        elif distances[closest] < 4:
             action = 23  # Rest
 
-        else:
+        else:  
             # Directing the bots movement is tricky since we use the action 
             #   space. We can only input one command at a time, so it is 
             #   neccessary to prioritize jumping or movement. Also, we must
