@@ -1,4 +1,4 @@
-name: Publish melee-env to pypi and testpypi
+name: Deploy to Pypi
 on: release
 
 jobs:

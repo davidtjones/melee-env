@@ -1,7 +1,7 @@
 melee-env
 ---
 
-This repo contains an implemention of Melee as a Gym-esque environment. 
+This repo contains an implemention of Melee as a Gym-esque environment.
 
 ### Code example: 
 ```python
@@ -33,6 +33,11 @@ for episode in range(episodes):
 
         observation, reward, done, info = env.step()        
 ```
+
+### Video Demonstration
+[![IClick me!](https://img.youtube.com/vi/c-MyFS2PAu8/0.jpg)](https://www.youtube.com/watch?v=c-MyFS2PAu8)
+
+
 This library has been designed with flexibility in mind. The action space, observation space, and the agents are completely modular, and there are only a few requirements to build your own. For more information on these topics, see the [README](melee_env/agents/README.md) in the agents folder.
 
 ## Note
