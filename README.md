@@ -48,7 +48,7 @@ Install from pip: `pip install melee-env`. Test by running the above example.
 
 ## Platform support
 * Linux
-* Windows (planned)
+* Windows
 
 ## Some notes:
 * If you notice that controllers aren't working, check the config in dolphin and verify that the controller profile is setup correctly. The automation steps should take care of this. You can verify the controller config for the bot is correct by checking Controllers -> [port X] -> Configure and verifying that the resulting window looks like [this](https://user-images.githubusercontent.com/609563/86555862-7dd45d80-bf06-11ea-8d7e-e4d8007f66a3.png). You should be able to load the slippibot profile to fix this. Unsure if this is still an issue.
