@@ -2,6 +2,7 @@ from melee_env.dconfig import DolphinConfig
 import melee
 from melee import enums
 import numpy as np
+import sys
     
 class MeleeEnv:
     def __init__(self, 
@@ -29,10 +30,16 @@ class MeleeEnv:
 
 
     def start(self):
+        if sys.platform == "linux":
+            dolphin_home_path = str(self.d.slippi_home)+"/"
+        elif sys.platform == "win32":
+            dolphin_home_path = None
+
         self.console = melee.Console(
             path=str(self.d.slippi_bin_path),
-            dolphin_home_path=str(self.d.slippi_home)+"/",
-            blocking_input=self.blocking_input)  # broken in 0.21.0
+            dolphin_home_path=dolphin_home_path,
+            blocking_input=self.blocking_input,
+            tmp_home_directory=False)
 
         # Configure Dolphin for the correct controller setup, add controllers
         for i in range(len(self.players)):

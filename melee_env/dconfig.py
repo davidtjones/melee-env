@@ -9,6 +9,10 @@ import subprocess
 import shutil
 import time
 import signal
+from zipfile import ZipFile
+import code
+
+
 
 class DolphinConfig:
     def __init__(self):
@@ -30,13 +34,19 @@ class DolphinConfig:
         self.slippi_path = self.data_path / "melee-env" / "Slippi"
 
         self.slippi_replays_path = self.slippi_path / "replays"
-        self.slippi_bin_path = self.slippi_path / "squashfs-root/usr/bin"
-        self.squash_fs = self.slippi_path / "squashfs-root"
-        self.slippi_home = self.slippi_path / "data"
-        self.config_path = self.slippi_home / "Config/Dolphin.ini"
 
+        if self.platform == "linux":
+            self.slippi_bin_path = self.slippi_path / "squashfs-root/usr/bin"
+            self.squash_fs = self.slippi_path / "squashfs-root"
+            self.slippi_home = self.slippi_path / "data"
+            self.config_path = self.slippi_home / "Config/Dolphin.ini"
+        
+        elif self.platform == "win32":
+            self.slippi_bin_path = self.slippi_path / "FM-Slippi"
+            self.slippi_home = self.slippi_bin_path
+            self.config_path = self.slippi_home / "User/Config/Dolphin.ini"
+        
         self.slippi_gecko_ini_path = self.slippi_bin_path / "Sys/GameSettings/GALE01r2.ini"
-
         self.install_data_path = self.module_path / "install_data"
 
         # check that our local slippi is installed
@@ -147,8 +157,8 @@ class DolphinConfig:
             target_url = "https://github.com/project-slippi/Ishiiruka/releases/latest/download/Slippi_Online-x86_64.AppImage"
 
         elif self.platform == "win32":
-            target_url = "https://github.com/project-slippi/Ishiiruka/releases/latest/download/Slippi_Online-x86_64.zip"
-            raise NotImplementedError("Windows currently not supported at this time.")
+            target_url = "https://github.com/project-slippi/Ishiiruka/releases/download/v2.3.1/FM-Slippi-2.3.1-Win.zip"
+            # raise NotImplementedError("Windows currently not supported at this time.")
 
         elif self.platform == "darwin":
             target_url = "https://github.com/project-slippi/Ishiiruka/releases/download/v2.3.1/FM-Slippi-2.3.1-Mac.dmg"
@@ -160,8 +170,7 @@ class DolphinConfig:
         slippi_game_path = self._download_file(target_url)
 
         # move to our directory
-        slippi_game_path.rename(install_path / slippi_game_path.name)
-        slippi_game_path = install_path / slippi_game_path.name
+        slippi_game_path = slippi_game_path.rename(install_path / slippi_game_path.name)
 
         if self.platform == "linux":
             print("Dolphin will open and then close to generate files")
@@ -186,12 +195,24 @@ class DolphinConfig:
             time.sleep(2)
             os.killpg(os.getpgid(process.pid), signal.SIGTERM) # send kill signal
 
-            # Delete executable
-            slippi_game_path.unlink()
+
 
         if self.platform == "win32":
-            # unzip the archive, etc. See libmelee readme
-            pass
+            # Extract
+            with ZipFile(slippi_game_path, 'r') as zipObj:
+                zipObj.extractall(slippi_game_path.parents[0] / "FM-Slippi")
+
+            print(f"Running: {str(self.slippi_bin_path / 'Slippi Dolphin.exe')}")
+            process = subprocess.Popen(str(self.slippi_bin_path / "Slippi Dolphin.exe"), stdout=subprocess.PIPE)
+            
+            time.sleep(2)
+            print("Please make a decision to allow slippi-dolphin access to private/public networks...")
+            os.kill(process.pid, signal.SIGTERM)
+
+        # Cleanup - Delete executable
+        slippi_game_path.unlink()
+
+        
 
     def apply_gecko_codes(self, install_path):
         # get most up-to-date codes:
@@ -236,11 +257,9 @@ class DolphinConfig:
         gale01r2_path.unlink()
 
     def configure_dolphin(self, install_path):
-
         if not self.config_path.exists():
             raise FileNotFoundError(f"No Slippi Config. Run Slippi Online once to generate these files"
-                 f"Then confirm that files exist in {self.config_path}")
-        
+                 f"Then confirm that files exist in {self.config_path}")      
 
         config = configparser.ConfigParser()
         config.read_file(open(self.config_path))
