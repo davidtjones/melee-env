@@ -6,7 +6,7 @@ from melee_env.agents.basic import *
 players = [Rest(), Shine(), Random(enums.Character.FALCO), CPU(enums.Character.LINK, 3)]
 
 env = MeleeEnv(
-    "path/to/iso",
+    "/home/david/Games/melee/roms/Super Smash Bros. Melee (USA) (En,Ja) (v1.02).iso",
     players,
     ActionSpace(),
     ObservationSpace(),

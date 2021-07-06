@@ -44,10 +44,11 @@ class ObservationSpace:
         stocks = self.get_stocks()
 
 
-        # if 0 <= actions[0][0] <= 10:  # DEAD_DOWN, DEAD_LEFT ... 
-        #     info = "dead"
+
+        # this is fancy one liner that just says if the player(s) with the 
+        #   fewest stocks sum to zero, the game is over. Doesn't cover teams.
+        # self.done = not self.current_observation[np.argsort(self.current_observation[:, -1])][::-1][1:, -1]
         
-        # self.done = not (bool(stocks[1][0]) or bool(stocks[1][1]))
         if self.current_frame > 85 and not self.done:
             # reward/penalize based on delta damage/stocks
             # +- 1 for stocks taken/lost

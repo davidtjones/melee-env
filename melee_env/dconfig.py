@@ -103,6 +103,28 @@ class DolphinConfig:
 
         return
 
+    def set_center_p2_hud(self, enable=True):
+        """Edit GALE01r2.ini to enable/disable centered P2"""
+        with open(str(self.slippi_gecko_ini_path), 'r') as f:
+            data = f.readlines()
+
+        if "Center Align 2P HUD" not in data[16]:
+            raise FileNotFoundError(f"Error: cannot locate Fast Forward Gecko code in "
+                 "{self.slippi_gecko_ini_path}, please ensure it is located in this "
+                 "file, and that it is on line 19!")
+
+        if data[16][0] == "-" and enable: 
+            data[16] = "$" + data[16][1:]
+            with open(str(self.slippi_gecko_ini_path), 'w') as f:
+                f.writelines(data)
+
+        elif data[16][0] == "$" and not enable:
+            data[16] = "-" + data[16][1:]
+            with open(str(self.slippi_gecko_ini_path), 'w') as f:
+                f.writelines(data)
+
+        return
+
     def set_controller_type(self, port, controller_type):
         if  not (1 <= int(port) <= 4):
             raise ValueError(f"Port must be 1, 2, 3, or 4. Received value {port}")
@@ -121,6 +143,7 @@ class DolphinConfig:
 
         return
 
+    # Initial Configuration and Installation methods below #
 
     def _download_file(self, url):
         local_filename = url.split('/')[-1]

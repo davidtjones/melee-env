@@ -19,6 +19,12 @@ class MeleeEnv:
         self.iso_path = iso_path
         self.players = players
 
+        if len(self.players) == 2:
+            self.d.set_center_p2_hud(True)
+
+        else:
+            self.d.set_center_p2_hud(False)
+
         self.action_space = action_space 
         self.observation_space = observation_space
 
@@ -37,11 +43,12 @@ class MeleeEnv:
         # Configure Dolphin for the correct controller setup, add controllers
         for i in range(len(self.players)):
             curr_player = self.players[i]
-
+            human_detected = False
             if curr_player.agent_type == "HMN":
                 self.d.set_controller_type(i+1, enums.ControllerType.GCN_ADAPTER)
                 curr_player.controller = melee.Controller(console=self.console, port=i+1, type=melee.ControllerType.GCN_ADAPTER)
                 curr_player.port = i+1
+                human_detected = True
             elif curr_player.agent_type in ["AI", "CPU"]:
                 self.d.set_controller_type(i+1, enums.ControllerType.STANDARD)
                 curr_player.controller = melee.Controller(console=self.console, port=i+1)
@@ -49,9 +56,13 @@ class MeleeEnv:
                 curr_player.port = i+1 
             else:  # no player
                 self.d.set_controller_type(i+1, enums.ControllerType.UNPLUGGED)
-        
-        if self.ai_starts_game:
-            self.players[i].press_start = True
+            
+            if self.ai_starts_game and not human_detected:
+                self.ai_press_start = True
+
+            if self.ai_starts_game:
+                self.players[self.menu_control_agent].press_start = True
+
 
         self.console.run(iso_path=self.iso_path)
         self.console.connect()
@@ -119,8 +130,26 @@ class MeleeEnv:
             observation, reward, done, info = self.observation_space(self.gamestate)
 
             for i in range(len(self.players)):
+                # if a player is detected as defeated, we need to add a row back
+                #   in for them since slippi/libmelee stops reporting on that 
+                #   player. Edge case: what if that player never enters the 
+                #   game? How can this be detected? Is this outside the scope?
+                #   It might be easier to just require agents occupy ports
+                #   sequentially from port 1 to 4.
                 if self.players[i].defeated == True and len(observation) < len(self.players):
-                    observation = np.insert(observation, i, np.full(observation.shape[1], -1), axis=0)
+                    # what number should go in the observation? It needs to be a 
+                    #   number that is outside of any stage such that bots that
+                    #   depend on that information aren't searching for dead
+                    #   opponents before opponents with stocks remaining. We 
+                    #   could just fill this information with dummy numbers,
+                    #   but for the sake of informing an agent, it makes more
+                    #   sense to preserve the last observation from defeated
+                    #   agents and to just put that back in. 
+                    observation = np.insert(
+                        observation,
+                        i,
+                        self.players[i].self_observation,
+                         axis=0)
 
             return observation, reward, done, info
         else:
