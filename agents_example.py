@@ -6,7 +6,7 @@ from melee_env.agents.basic import *
 players = [Rest(), Shine(), Random(enums.Character.FALCO), CPU(enums.Character.LINK, 3)]
 
 env = MeleeEnv(
-    "path/to/iso",
+    "path/to/iso"
     players,
     ActionSpace(),
     ObservationSpace(),
