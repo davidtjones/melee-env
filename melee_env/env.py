@@ -64,6 +64,7 @@ class MeleeEnv:
                 self.players[self.menu_control_agent].press_start = True
 
 
+
         self.console.run(iso_path=self.iso_path)
         self.console.connect()
 
