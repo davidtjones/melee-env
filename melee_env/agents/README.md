@@ -3,7 +3,7 @@ Some documentation on Agents, Observation Spaces, and Action Spaces
 This will be an intermediary until there is a need to make better docs. Currently, these classes are fairly straightforward and will not need tons of explanation. 
 
 ## Agents
-Agents should inherit from at least the base `Agent` class. If your agent needs to choose different characters, inherit from the `AgentChooseCharacter` class and pass the correct enum as a parameter on initialization. Either way, make sure the `character` attribute is not `None`, otherwise the game won't be able to choose a character for your agent.
+Agents should inherit from at least the base `Agent` class. If your agent needs to choose different characters, inherit from the `AgentChooseCharacter` class and pass the correct enum as a parameter on initialization. Either way, make sure the `character` attribute is not `None`, otherwise the game won't be able to choose a character for your agent. 
 
 #### The `act` Method
 Agents should always implement the `act` method. Act requires two parameters - an observation (from the observation space) and the set of available actions (the action space). Note that `act` does not return the action but just sets the `action` attribute. The `Random` agent and the `Shine` agent are useful to seeing how the action and observation spaces are used. 
@@ -21,6 +21,7 @@ class MyNewAgent(Agent):
 		# logic that dictates the next action. Make sure to set self.action.
 		self.action = action  
 ```
+Finally, agents must occupy ports sequentially starting at port 1. Currently, there are no plans to support every port configuration.
 
 ## Observation Space
 Observation spaces give agents information about the world around them. melee-env's `ObservationSpace` class provides a convenient way to translate libmelee's `gamestate` into a matrix data to be consumed by agents. `ObservationSpace.__call__` consumes libmelee's gamestate, and this function must return a numpy array with shape [P, C], where P is the number of players and C is the number of observed attributes (channels). Ideally this form is perfect for sending directly to popular learning frameworks, like TensorFlow or PyTorch, yet still flexible enough for other usage.
