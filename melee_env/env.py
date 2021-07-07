@@ -47,7 +47,7 @@ class MeleeEnv:
             blocking_input=self.blocking_input,
             tmp_home_directory=True)
 
-        print(self.console.dolphin_home_path)
+        # print(self.console.dolphin_home_path)  # add to logging later
         # Configure Dolphin for the correct controller setup, add controllers
         for i in range(len(self.players)):
             curr_player = self.players[i]
