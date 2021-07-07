@@ -45,8 +45,9 @@ class MeleeEnv:
             path=str(self.d.slippi_bin_path),
             dolphin_home_path=dolphin_home_path,
             blocking_input=self.blocking_input,
-            tmp_home_directory=False)
+            tmp_home_directory=True)
 
+        print(self.console.dolphin_home_path)
         # Configure Dolphin for the correct controller setup, add controllers
         for i in range(len(self.players)):
             curr_player = self.players[i]
