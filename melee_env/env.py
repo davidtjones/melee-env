@@ -4,7 +4,7 @@ from melee import enums
 import numpy as np
 import sys
 
-    
+
 class MeleeEnv:
     def __init__(self, 
         iso_path,
@@ -50,7 +50,6 @@ class MeleeEnv:
 
         self.dolphin_home_path = self.console.dolphin_home_path
 
-        code.interact(local=locals())
         # Configure Dolphin for the correct controller setup, add controllers
         human_detected = False
 
