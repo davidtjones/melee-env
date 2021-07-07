@@ -3,7 +3,8 @@ import melee
 from melee import enums
 import numpy as np
 import sys
-    
+
+
 class MeleeEnv:
     def __init__(self, 
         iso_path,
@@ -49,9 +50,10 @@ class MeleeEnv:
 
         # print(self.console.dolphin_home_path)  # add to logging later
         # Configure Dolphin for the correct controller setup, add controllers
+        human_detected = False
+
         for i in range(len(self.players)):
             curr_player = self.players[i]
-            human_detected = False
             if curr_player.agent_type == "HMN":
                 self.d.set_controller_type(i+1, enums.ControllerType.GCN_ADAPTER)
                 curr_player.controller = melee.Controller(console=self.console, port=i+1, type=melee.ControllerType.GCN_ADAPTER)
@@ -65,13 +67,14 @@ class MeleeEnv:
             else:  # no player
                 self.d.set_controller_type(i+1, enums.ControllerType.UNPLUGGED)
             
-            if self.ai_starts_game and not human_detected:
-                self.ai_press_start = True
+        if self.ai_starts_game and not human_detected:
+            self.ai_press_start = True
 
-            if self.ai_starts_game:
-                self.players[self.menu_control_agent].press_start = True
+        else:
+            self.ai_press_start = False  # don't let ai press start without the human player joining in. 
 
-
+        if self.ai_starts_game and self.ai_press_start:
+            self.players[self.menu_control_agent].press_start = True
 
         self.console.run(iso_path=self.iso_path)
         self.console.connect()
