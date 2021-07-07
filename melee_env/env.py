@@ -50,7 +50,6 @@ class MeleeEnv:
 
         self.dolphin_home_path = self.console.dolphin_home_path
 
-        code.interact(local=locals())
         # Configure Dolphin for the correct controller setup, add controllers
         human_detected = False
 
