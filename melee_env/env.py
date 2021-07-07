@@ -3,7 +3,6 @@ import melee
 from melee import enums
 import numpy as np
 import sys
-import code
 
     
 class MeleeEnv:
