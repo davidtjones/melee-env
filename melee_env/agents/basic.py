@@ -1,31 +1,19 @@
 from abc import ABC, abstractmethod
 from melee import enums
 import numpy as np
-
-
-def is_defeated(f):
-# libmelee/slippi reports defeated state for 60 frames, then completely 
-#   drops the player from reporting. We need to know when the player is defeated
-#   so that a row can be added back to the observation list to keep the size
-#   consistent. This helps avoid certain wonky behavior. 
-    def wrapper(self, *args):
-        self.self_observation = args[0][self.port-1]
-        if not self.defeated and self.self_observation[-1] != 0:
-            return f(self, *args)
-        elif not self.defeated and self.self_observation[-1] == 0:
-            self.defeated = True
-            print(f"{self} was defeated")
-    return wrapper
+from melee_env.agents.util import *
+import code
 
 class Agent(ABC):
     def __init__(self):
         self.agent_type = "AI"
         self.controller = None
-        self.port = None
+        self.port = None  # this is also in controller, maybe redundant?
         self.action = 0
         self.press_start = False
         self.self_observation = None
-    
+        self.current_frame = 0
+
     @abstractmethod
     def act(self):
         pass
@@ -41,8 +29,7 @@ class Human(Agent):
         super().__init__()
         self.agent_type = "HMN"
     
-    @is_defeated
-    def act(self, observation, action_space):
+    def act(self, gamestate):
         pass
 
 
@@ -54,8 +41,7 @@ class CPU(AgentChooseCharacter):
             raise ValueError(f"CPU Level must be 1-9. Got {lvl}")
         self.lvl = lvl
     
-    @is_defeated  
-    def act(self, observation, action_space):
+    def act(self, gamestate):
         pass
 
 
@@ -63,53 +49,44 @@ class NOOP(AgentChooseCharacter):
     def __init__(self, character):
         super().__init__(character)
 
-    @is_defeated
-    def act(self, observation, action_space):
+    def act(self, gamestate):
         self.action = 0
 
 
 class Random(AgentChooseCharacter):
     def __init__(self, character):
         super().__init__(character)
-        
-    @is_defeated
-    def act(self, observation, action_space):
-        #if not self.is_defeated(observation):
-        action = action_space.sample()
-        self.action = action
-
+        self.action_space = ActionSpace()
+    
+    @from_action_space
+    def act(self, gamestate):
+        action = self.action_space.sample()
+        return action
 
 class Shine(Agent):
-    # refer to action_space.py
     def __init__(self):
         super().__init__()
         self.character = enums.Character.FOX
     
-    @is_defeated
-    def act(self, observation, action_space):
-        #if not self.is_defeated(observation):
-        action = 0  # none 
-        state, frames, hitstun = observation[self.port-1][2:5]
+    def act(self, gamestate):
+        state = gamestate.players[self.port].action
+        frames = gamestate.players[self.port].action_frame
+        hitstun = gamestate.players[self.port].hitstun_frames_left
+        
+        if state in [enums.Action.STANDING]:
+            self.controller.tilt_analog_unit(enums.Button.BUTTON_MAIN, 0, -1)
 
-        if (state == enums.Action.STANDING.value or 
-            state == enums.Action.CROUCH_START.value):
-            action = 5  # crouch
+        if (state == enums.Action.CROUCHING or (
+            state == enums.Action.KNEE_BEND and frames == 3)):
+            self.controller.release_button(enums.Button.BUTTON_Y)
+            self.controller.press_button(enums.Button.BUTTON_B)
 
-        if state == enums.Action.CROUCHING.value:
-            action = 23  # down-B (shine)
-
-        if state == enums.Action.KNEE_BEND.value and frames == 3:
-                action = 23  # shine again on frame 3 of knee bend.
-
-        if (state == enums.Action.DOWN_B_GROUND.value or 
-            state == enums.Action.DOWN_B_GROUND_START.value):
-            action = 10  # tap jump
+        if state in [enums.Action.DOWN_B_GROUND]:
+            self.controller.release_button(enums.Button.BUTTON_B)
+            self.controller.press_button(enums.Button.BUTTON_Y)
 
         if hitstun > 0:
-            action = 0  # don't do crazy things while in hitstun
-
-        self.action = action
-
+            self.controller.release_all()
 
 class Rest(Agent):
     # adapted from AltF4's tutorial video: https://www.youtube.com/watch?v=1R723AS1P-0
@@ -118,16 +95,23 @@ class Rest(Agent):
         super().__init__()
         self.character = enums.Character.JIGGLYPUFF
 
-    @is_defeated
-    def act(self, observation, action_space):
-        # In order to make Rest-bot work for any number of players, it needs to 
-        #   select a target. In this code, a target is selected by identifying
-        #   the closest player who is not currently defeated/respawning. We 
-        #   could use stage boundaries as defined in melee.stages but that would
-        #   limit rest-bot to only working on tournament-legal stages. 
+        self.action_space = ActionSpace()
+        self.observation_space = ObservationSpace()
+        self.action = 0
+        
+    @from_action_space       # translate the action from action_space to controller input
+    @from_observation_space  # convert gamestate to an observation
+    def act(self, observation):
+        observation, reward, done, info = observation
 
+        # In order to make Rest-bot work for any number of players, it needs to 
+        #   select a target. A target is selected by identifying the closest 
+        #   player who is not currently defeated/respawning.  
         curr_position = observation[self.port-1, :2]
-        positions_centered = observation[:, :2] - curr_position
+        try:
+            positions_centered = observation[:, :2] - curr_position
+        except:
+            code.interact(local=locals())
 
         # distance formula
         distances = np.sqrt(np.sum(positions_centered**2, axis=1))
@@ -150,12 +134,6 @@ class Rest(Agent):
             action = 23  # Rest
 
         else:  
-            # Directing the bots movement is tricky since we use the action 
-            #   space. We can only input one command at a time, so it is 
-            #   neccessary to prioritize jumping or movement. Also, we must
-            #   tell the bot to re-input buttons occassionally so it doesn't
-            #   get stuck. 
-
             if np.abs(positions_centered[closest, 0]) < np.abs(positions_centered[closest, 1]):
                 # closer in X than in Y - prefer jump
             
@@ -177,3 +155,5 @@ class Rest(Agent):
                     action = 3  # move right
 
         self.action = action
+
+        return self.action

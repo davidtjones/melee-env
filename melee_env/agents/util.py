@@ -4,70 +4,77 @@ import melee
 
 class ObservationSpace:
     def __init__(self):
+        self.previous_observation = np.empty(0)
+        # self.current_gamestate = None
+        self.curr_action = None
+        self.player_count = None
         self.current_frame = 0
-        self.done = False
-        self.previous_gamestate = None
-        self.current_gamestate = None
+        self.intial_process_complete = False
 
-    def _reset(self):
-        self.current_frame = 0
-        self.done = False
-        self.previous_gamestate = None
-        self.current_gamestate = None
+    def set_player_keys(self, keys):
+        self.player_keys = keys
 
-    def get_stocks(self):
-        stocks = [self.current_gamestate.players[i].stock for i in list(self.current_gamestate.players.keys())]
+    def get_stocks(self, gamestate):
+        stocks = [gamestate.players[i].stock for i in list(gamestate.players.keys())]
         return np.array([stocks]).T  # players x 1
-    
-    def get_actions(self):
-        actions = [self.current_gamestate.players[i].action.value for i in list(self.current_gamestate.players.keys())]
-        action_frames = [self.current_gamestate.players[i].action_frame for i in list(self.current_gamestate.players.keys())]
-        hitstun_frames_left = [self.current_gamestate.players[i].hitstun_frames_left for i in list(self.current_gamestate.players.keys())]
+  
+    def get_actions(self, gamestate):
+        actions = [gamestate.players[i].action.value for i in list(gamestate.players.keys())]
+        action_frames = [gamestate.players[i].action_frame for i in list(gamestate.players.keys())]
+        hitstun_frames_left = [gamestate.players[i].hitstun_frames_left for i in list(gamestate.players.keys())]
         
         return np.array([actions, action_frames, hitstun_frames_left]).T # players x 3
 
-    def get_positions(self):
-        x_positions = [self.current_gamestate.players[i].x for i in list(self.current_gamestate.players.keys())]
-        y_positions = [self.current_gamestate.players[i].y for i in list(self.current_gamestate.players.keys())]
+    def get_positions(self, gamestate):
+        x_positions = [gamestate.players[i].position.x for i in list(gamestate.players.keys())]
+        y_positions = [gamestate.players[i].position.y for i in list(gamestate.players.keys())]
 
         return np.array([x_positions, y_positions]).T  # players x 2
 
     def __call__(self, gamestate):
-        """ pull out relevant info from gamestate """
-        self.current_gamestate = gamestate
-        self.current_frame +=1 
-        total_reward = 0
+        reward = 0
         info = None
+        self.current_gamestate = gamestate
+        self.player_count = len(list(gamestate.players.keys()))
         
-        positions = self.get_positions()
-        actions = self.get_actions()
-        stocks = self.get_stocks()
+        observation = np.concatenate((
+            self.get_positions(gamestate), 
+            self.get_actions(gamestate), 
+            self.get_stocks(gamestate)), axis=1)
 
 
+        if self.current_frame < 85 and not self.intial_process_complete:
+            self.players_defeated_frames = np.array([0] * len(observation))
+            self.intial_process_complete = True
 
-        # this is fancy one liner that just says if the player(s) with the 
-        #   fewest stocks sum to zero, the game is over. Doesn't cover teams.
-        # self.done = not self.current_observation[np.argsort(self.current_observation[:, -1])][::-1][1:, -1]
-        
+        defeated_idx = np.where(observation[:, -1] == 0)
+        self.players_defeated_frames[defeated_idx] += 1
+
+        if len(observation) < len(self.previous_observation):
+            rows_to_insert = np.where(self.players_defeated_frames >= 60)
+            for row in rows_to_insert:
+                observation = np.insert(observation, row, self.previous_observation[row], axis=0)            
+
+        self.done = not np.sum(observation[np.argsort(observation[:, -1])][::-1][1:, -1])
+
         if self.current_frame > 85 and not self.done:
-            # reward/penalize based on delta damage/stocks
-            # +- 1 for stocks taken/lost
-            # total_reward += (stocks[0][1])
-            # total_reward -= (stocks[0][0])
-
-            # # if stocks change, don't reward for going back to 0 damage
-            # # assumption: you can't lose more than one stock on a given frame
-            # total_reward -= (percents[0][0] * (1^stocks[0][0])) * .01
-            # total_reward += (percents[0][1] * (1^stocks[0][1])) * .01
-            total_reward = 0
-
-        if self.current_gamestate is not None:
-            self.previous_gamestate = self.current_gamestate
-
+            # difficult to derive a reward function in a (possible) 4-player env
+            # but you might define some reward function here
+            # self.total_reward += reward
+            reward = 0
         
-        observation = np.concatenate((positions, actions, stocks), axis=1)
+        # previous observation will always have the correct number of players
+        self.previous_observation = observation
+        self.current_frame += 1
 
-        return observation, total_reward, self.done, info
+        if self.done:
+            self._reset()
+
+        return observation, reward, self.done, info
+
+    def _reset(self):
+        self.__init__()
+        print("observation space got reset!")
 
 
 class ActionSpace:
@@ -183,7 +190,7 @@ class ControlState:
             melee.enums.Button.BUTTON_Z,
             melee.enums.Button.BUTTON_R]
 
-    def execute(self, controller):
+    def __call__(self, controller):
         controller.release_all()      
         if self.state[2]:             # only press button if not no-op
             if self.state[2] != 4.0:  # special case for r shoulder
@@ -193,3 +200,19 @@ class ControlState:
         
         controller.tilt_analog_unit(melee.enums.Button.BUTTON_MAIN, 
                                     self.state[0], self.state[1])
+
+def from_observation_space(act):
+    def get_observation(self, *args):
+        gamestate = args[0]
+        observation = self.observation_space(gamestate)
+        return act(self, observation)
+    return get_observation
+
+def from_action_space(act):
+    def get_action_encoding(self, *args):
+        gamestate = args[0]
+        action = act(self, gamestate)
+        control = self.action_space(action)
+        control(self.controller)
+        return 
+    return get_action_encoding
