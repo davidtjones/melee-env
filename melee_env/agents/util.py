@@ -30,7 +30,7 @@ class ObservationSpace:
 
         return np.array([x_positions, y_positions]).T  # players x 2
 
-    def make_observation(self, gamestate):
+    def __call__(self, gamestate):
         total_reward = 0
         info = None
 
@@ -189,7 +189,7 @@ class ControlState:
             melee.enums.Button.BUTTON_Z,
             melee.enums.Button.BUTTON_R]
 
-    def execute(self, controller):
+    def __call__(self, controller):
         controller.release_all()      
         if self.state[2]:             # only press button if not no-op
             if self.state[2] != 4.0:  # special case for r shoulder
@@ -203,18 +203,15 @@ class ControlState:
 def from_observation_space(act):
     def get_observation(self, *args):
         gamestate = args[0]
-        observation = self.observation_space.make_observation(gamestate)
-
+        observation = self.observation_space(gamestate)
         return act(self, observation)
     return get_observation
 
 def from_action_space(act):
     def get_action_encoding(self, *args):
-
         gamestate = args[0]
         action = act(self, gamestate)
-
         control = self.action_space(action)
-        control.execute(self.controller)
+        control(self.controller)
         return 
     return get_action_encoding
