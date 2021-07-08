@@ -9,16 +9,16 @@ parser.add_argument("--iso", default=None, type=str,
 
 args = parser.parse_args()
 
-players = [Rest(), Shine(), Random(enums.Character.FALCO), CPU(enums.Character.LINK, 3)]
+players = [Rest(), NOOP(enums.Character.FOX)]
 
-env = MeleeEnv(args.iso, players)
+env = MeleeEnv(args.iso, players, fast_forward=True)
 
-episodes = 10; reward = 0; done = False
+episodes = 10; reward = 0
 env.start()
 
 for episode in range(episodes):
-    gamestate = env.setup(enums.Stage.BATTLEFIELD)
+    gamestate, done = env.setup(enums.Stage.BATTLEFIELD)
     while not done:
         for i in range(len(players)):
             players[i].act(gamestate)
-        gamestate = env.step()
+        gamestate, done = env.step()

@@ -5,6 +5,7 @@ import melee
 class ObservationSpace:
     def __init__(self):
         self.previous_observation = np.empty(0)
+        # self.current_gamestate = None
         self.curr_action = None
         self.player_count = None
         self.current_frame = 0
@@ -31,9 +32,9 @@ class ObservationSpace:
         return np.array([x_positions, y_positions]).T  # players x 2
 
     def __call__(self, gamestate):
-        total_reward = 0
+        reward = 0
         info = None
-
+        self.current_gamestate = gamestate
         self.player_count = len(list(gamestate.players.keys()))
         
         observation = np.concatenate((

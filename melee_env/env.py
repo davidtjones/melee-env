@@ -116,19 +116,19 @@ class MeleeEnv:
                     controller=self.players[self.menu_control_agent].controller)
 
             elif self.gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
-                if self.gamestate.frame < -83:
-                    continue
-                else:
-                    return self.gamestate
-
+                return self.gamestate, False  # game is not done on start
+                
             else:
                 melee.MenuHelper.choose_versus_mode(self.gamestate, self.players[self.menu_control_agent].controller)
 
-
     def step(self):
+        stocks = np.array([self.gamestate.players[i].stock for i in list(self.gamestate.players.keys())])
+        done = not np.sum(stocks[np.argsort(stocks)][::-1][1:])
+
         if self.gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
-            self.gamestate = self.console.step()           
-        return self.gamestate
+            self.gamestate = self.console.step()
+        return self.gamestate, done
+
 
     def close(self):
         for t, c in self.controllers.items():

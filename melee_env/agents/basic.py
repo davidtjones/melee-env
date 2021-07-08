@@ -2,15 +2,7 @@ from abc import ABC, abstractmethod
 from melee import enums
 import numpy as np
 from melee_env.agents.util import *
-
-"""
-This is a collection of example bots using the default classes. User-defined
-agents should always inherit from `Agent` or `AgentChooseCharacter`. While there
-are many ways to create an agent in this framework, it is recommended that users
-try to mirror the examples as much as possible. There are example resources
-available in util.py for defining action and observation spaces. See `Rest` and
-`Shine` for the suggsted way to apply these to your own agent. 
-"""
+import code
 
 class Agent(ABC):
     def __init__(self):
@@ -116,7 +108,10 @@ class Rest(Agent):
         #   select a target. A target is selected by identifying the closest 
         #   player who is not currently defeated/respawning.  
         curr_position = observation[self.port-1, :2]
-        positions_centered = observation[:, :2] - curr_position
+        try:
+            positions_centered = observation[:, :2] - curr_position
+        except:
+            code.interact(local=locals())
 
         # distance formula
         distances = np.sqrt(np.sum(positions_centered**2, axis=1))

@@ -7,20 +7,21 @@ melee-env wraps the fantastic [libmelee](https://github.com/altf4/libmelee) as a
 from melee import enums
 from melee_env.env import MeleeEnv
 from melee_env.agents.basic import *
+import argparse
 
-players = [Rest(), Shine(), Random(enums.Character.FALCO), CPU(enums.Character.LINK, 3)]
+players = [Rest(), NOOP(enums.Character.FOX)]
 
-env = MeleeEnv("path/to/iso", players)
+env = MeleeEnv('path/to/iso', players, fast_forward=True)
 
-episodes = 10; reward = 0; done = False
+episodes = 10; reward = 0
 env.start()
 
 for episode in range(episodes):
-    gamestate = env.setup(enums.Stage.BATTLEFIELD)
+    gamestate, done = env.setup(enums.Stage.BATTLEFIELD)
     while not done:
         for i in range(len(players)):
             players[i].act(gamestate)
-        gamestate = env.step()      
+        gamestate, done = env.step()
 ```
 
 ### Video Demonstration
