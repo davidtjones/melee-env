@@ -3,17 +3,16 @@ import melee
 from melee import enums
 import numpy as np
 import sys
+import time
 
 
 class MeleeEnv:
     def __init__(self, 
         iso_path,
         players,
-        action_space,
-        observation_space,
         fast_forward=False, 
-        blocking_input=False,
-        ai_starts_game=False):
+        blocking_input=True,
+        ai_starts_game=True):
 
         self.d = DolphinConfig()
         self.d.set_ff(fast_forward)
@@ -21,14 +20,14 @@ class MeleeEnv:
         self.iso_path = iso_path
         self.players = players
 
+        # inform other players of other players
+        # for player in self.players:
+        #     player.set_player_keys(len(self.players))
+        
         if len(self.players) == 2:
             self.d.set_center_p2_hud(True)
-
         else:
             self.d.set_center_p2_hud(False)
-
-        self.action_space = action_space 
-        self.observation_space = observation_space
 
         self.blocking_input = blocking_input
         self.ai_starts_game = ai_starts_game
@@ -120,7 +119,7 @@ class MeleeEnv:
                 if self.gamestate.frame < -83:
                     continue
                 else:
-                    return self.observation_space(self.gamestate)
+                    return self.gamestate
 
             else:
                 melee.MenuHelper.choose_versus_mode(self.gamestate, self.players[self.menu_control_agent].controller)
@@ -128,45 +127,8 @@ class MeleeEnv:
 
     def step(self):
         if self.gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
-            for i in range(len(self.players)):
-                if self.players[i].agent_type == "AI":
-                    # `action` is one of N possible actions an agent can take
-                    #   as defined in action_space
-                    controller_input = self.action_space(self.players[i].action)
-
-                    # execute must be written to support any action from 
-                    #   ActionSpace
-                    controller_input.execute(self.players[i].controller)    
-
-            self.gamestate = self.console.step()
-
-            observation, reward, done, info = self.observation_space(self.gamestate)
-
-            for i in range(len(self.players)):
-                # if a player is detected as defeated, we need to add a row back
-                #   in for them since slippi/libmelee stops reporting on that 
-                #   player. Edge case: what if that player never enters the 
-                #   game? How can this be detected? Is this outside the scope?
-                #   It might be easier to just require agents occupy ports
-                #   sequentially from port 1 to 4.
-                if self.players[i].defeated == True and len(observation) < len(self.players):
-                    # what number should go in the observation? It needs to be a 
-                    #   number that is outside of any stage such that bots that
-                    #   depend on that information aren't searching for dead
-                    #   opponents before opponents with stocks remaining. We 
-                    #   could just fill this information with dummy numbers,
-                    #   but for the sake of informing an agent, it makes more
-                    #   sense to preserve the last observation from defeated
-                    #   agents and to just put that back in. 
-                    observation = np.insert(
-                        observation,
-                        i,
-                        self.players[i].self_observation,
-                         axis=0)
-
-            return observation, reward, done, info
-        else:
-            return None, None, True, None
+            self.gamestate = self.console.step()           
+        return self.gamestate
 
     def close(self):
         for t, c in self.controllers.items():
