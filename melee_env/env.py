@@ -47,8 +47,7 @@ class MeleeEnv:
             blocking_input=self.blocking_input,
             tmp_home_directory=True)
 
-        self.dolphin_home_path = self.console.dolphin_home_path
-
+        # print(self.console.dolphin_home_path)  # add to logging later
         # Configure Dolphin for the correct controller setup, add controllers
         human_detected = False
 
