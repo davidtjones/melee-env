@@ -21,10 +21,6 @@ class Agent(ABC):
         self.press_start = False
         self.self_observation = None
         self.current_frame = 0
-        self.player_keys = 0
-
-    def set_player_keys(self, player_count):
-        self.player_keys = set(range(1, player_count+1))
 
     @abstractmethod
     def act(self):
@@ -110,14 +106,12 @@ class Rest(Agent):
         self.action_space = ActionSpace()
         self.observation_space = ObservationSpace()
         self.action = 0
-
-    def set_player_keys(self, player_count):
-        self.player_keys = self.player_keys = set(range(1, player_count+1))
-        self.observation_space.set_player_keys(self.player_keys)
         
     @from_action_space       # translate the action from action_space to controller input
     @from_observation_space  # convert gamestate to an observation
     def act(self, observation):
+        observation, reward, done, info = observation
+
         # In order to make Rest-bot work for any number of players, it needs to 
         #   select a target. A target is selected by identifying the closest 
         #   player who is not currently defeated/respawning.  
@@ -145,12 +139,6 @@ class Rest(Agent):
             action = 23  # Rest
 
         else:  
-            # Directing the bots movement is tricky since we use the action 
-            #   space. We can only input one command at a time, so it is 
-            #   neccessary to prioritize jumping or movement. Also, we must
-            #   tell the bot to re-input buttons occassionally so it doesn't
-            #   get stuck. 
-
             if np.abs(positions_centered[closest, 0]) < np.abs(positions_centered[closest, 1]):
                 # closer in X than in Y - prefer jump
             

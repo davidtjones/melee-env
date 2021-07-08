@@ -21,8 +21,8 @@ class MeleeEnv:
         self.players = players
 
         # inform other players of other players
-        for player in self.players:
-            player.set_player_keys(len(self.players))
+        # for player in self.players:
+        #     player.set_player_keys(len(self.players))
         
         if len(self.players) == 2:
             self.d.set_center_p2_hud(True)

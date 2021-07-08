@@ -1,13 +1,14 @@
 import numpy as np
 import melee
-import code
+
 
 class ObservationSpace:
     def __init__(self):
-        self.previous_observation = None
+        self.previous_observation = np.empty(0)
         self.curr_action = None
         self.player_count = None
         self.current_frame = 0
+        self.intial_process_complete = False
 
     def set_player_keys(self, keys):
         self.player_keys = keys
@@ -30,37 +31,49 @@ class ObservationSpace:
         return np.array([x_positions, y_positions]).T  # players x 2
 
     def make_observation(self, gamestate):
-        """ modify/filter gamestate to be in a more immediately useful form """
         total_reward = 0
         info = None
 
         self.player_count = len(list(gamestate.players.keys()))
-        self.current_frame += 1
-
+        
         observation = np.concatenate((
             self.get_positions(gamestate), 
             self.get_actions(gamestate), 
             self.get_stocks(gamestate)), axis=1)
 
-        # monitor when slippi drops players from reporting. This is problematic
-        # for learning agents who depend on a constant input size. 
-        if self.previous_observation is not None and len(observation) < len(self.previous_observation):
-            missing_players = list(self.player_keys - set(gamestate.players.keys()))
-            for player_idx in missing_players:
-                observation = np.insert(observation, player_idx-1, self.previous_observation[player_idx-1], axis=0)            
 
-        # code.interact(local=locals())
+        if self.current_frame < 85 and not self.intial_process_complete:
+            self.players_defeated_frames = np.array([0] * len(observation))
+            self.intial_process_complete = True
+
+        defeated_idx = np.where(observation[:, -1] == 0)
+        self.players_defeated_frames[defeated_idx] += 1
+
+        if len(observation) < len(self.previous_observation):
+            rows_to_insert = np.where(self.players_defeated_frames >= 60)
+            for row in rows_to_insert:
+                observation = np.insert(observation, row, self.previous_observation[row], axis=0)            
+
         self.done = not np.sum(observation[np.argsort(observation[:, -1])][::-1][1:, -1])
 
         if self.current_frame > 85 and not self.done:
             # difficult to derive a reward function in a (possible) 4-player env
             # but you might define some reward function here
-            # self.reward = ??
-            # self.total_reward += self.reward
-            pass
-
+            # self.total_reward += reward
+            reward = 0
+        
+        # previous observation will always have the correct number of players
         self.previous_observation = observation
-        return observation
+        self.current_frame += 1
+
+        if self.done:
+            self._reset()
+
+        return observation, reward, self.done, info
+
+    def _reset(self):
+        self.__init__()
+        print("observation space got reset!")
 
 
 class ActionSpace:
