@@ -46,7 +46,7 @@ From here, there is a lot of freedom in what you can do next.
 ```
 
 ##### Learning Agents
-Alternatively, if you are developing a learning agent, you may wish to utilize an action space and/or an observation space. To provide the utmost flexibilty, melee-env does not include the action space and observation space as part of the environment itself (in contrast to OpenAI's Gym). Instead, the agent should manage their own action and observation spaces. This allows for multiple agents to run through melee-env simultaneously, since every agent is given the unaltered gamestate as input. While it may be too resource-intensive to run a 4-player game with heavy AI code, it is not beyond the realm of possiblity to run a 1v1 match against two AI. This provides a convenient way to benchmark performance for you own agent. `melee-env` provides the `Rest` agent, which uses its own action and observation spaces: 
+Alternatively, if you are developing a learning agent, you may wish to utilize an action space and/or an observation space. `melee-env` provides the `Rest` agent, which uses its own action and observation spaces: 
 ```python
 class Rest(Agent):
     # adapted from AltF4's tutorial video: https://www.youtube.com/watch?v=1R723AS1P-0
@@ -68,13 +68,44 @@ Notice how the action and observation spaces are defined in `__init__`. Then, th
 
 Lastly, agents must occupy ports sequentially starting at port 1. Currently, there are no plans to support every port configuration. Be careful if using the `Human` agent - you don't want to press start before you have selected a character, or the environment may crash. 
 
-## Observation Space
-Observation spaces give agents information about the world around them. melee-env's `ObservationSpace` class provides a convenient way to translate libmelee's `gamestate` into a matrix data to be consumed by agents. `ObservationSpace.__call__` consumes libmelee's gamestate, and this function must return a numpy array with shape [P, C], where P is the number of players and C is the number of observed attributes (channels). Ideally this form is perfect for sending directly to popular learning frameworks, like TensorFlow or PyTorch, yet still flexible enough for other usage.
+## Action and Observation Spaces
+To provide the utmost flexibilty, melee-env does not include the action space and observation space as part of the environment itself (in contrast to OpenAI's Gym). Instead, the agent should manage their own action and observation spaces. This allows for multiple agents to run through melee-env simultaneously, since every agent is given the unaltered gamestate as input. While it may be too resource-intensive to run a 4-player game with heavy AI code, it is not beyond the realm of possiblity to run a 1v1 match against two AI. This provides a convenient way to benchmark performance for you own agent.
 
-**Stocks are required to be in the observation**. Since stocks impact the game state, I have adopted the convention that stocks must be included in the observation and must be the last channel, in player order. See the example `ObservationSpace` in `util.py`. If you choose not to use stocks in your agent, you can use slicing to remove the stocks in the act method with observation[:, :-1].
-
-## Action Space
-Action spaces provide an interface for agents to interact with their environment. An action space is essentially a list of possible actions. Since dolphin is designed to read inputs from a standard controller, we must map actions to controller inputs. libmelee implements controller actions, so we only need to know what actions we care about. Please refer to the example `ActionSpace` in `util.py`. 
+### Action Space
+The goal of an action space is to provide an autonmous agent with free reign over what action it is allowed to pick. Ultimately, this is just a list of possible actions. `melee-env` provides a sample action-space that defines a minimal yet robust set of actions. You are free to define and use your own action space with melee-env. Note that to use the decorator `from_action_space`, you should implement the `__call__` method, which will take the index to a given action in the action space. `from_action_space` then converts this into real control inputs. See `ActionSpace` and `from_action_space` in util.py for more.
 
 #### Control State
-Note that if you choose to implement your own action state, you will also need to write a ControlState class that consumes your actions and is able to execute them on the controller. See `ControlState` in `util.py` for an example. 
+Note that if you choose to implement your own action state, you will also need to write a ControlState class that consumes your actions and is able to execute them on the agent's controller. See `ControlState` in util.py for an example. 
+
+### Observation Space
+The goal of an observation space is to extract information from the agent's world and to transform it into some usable form. For most machine-learning/deep learning frameworks, the numpy array serves as the base structure for this. `melee-env` provides a minimal observation space that is used with the `Rest` agent. Don't forget to reset your observation space between episodes.
+
+#### 3 and 4 player games
+Observation spaces can be somewhat tricky, as slippi completely stops reporting on players that have been defeated after 60 frames. This may not be a problem if you only plan to only run 1v1 environments. The sample Observation Space in `util.py` does contain some code to enable agents to maintain their observations in FFA-style matches. I'm unsure if this is the best possible method for this, but this does seem to work:
+```python
+class ObservationSpace:
+    def __init__(self):
+        self.previous_observation = np.empty(0)
+        self.current_frame = 0
+        self.intial_process_complete = False
+		...
+
+	def __call__(self, gamestate):
+		...
+		observation = something
+		...
+        if self.current_frame < 85 and not self.intial_process_complete:
+            self.players_defeated_frames = np.array([0] * len(observation))
+            self.intial_process_complete = True
+
+        defeated_idx = np.where(observation[:, -1] == 0)
+        self.players_defeated_frames[defeated_idx] += 1
+
+        if len(observation) < len(self.previous_observation):
+            rows_to_insert = np.where(self.players_defeated_frames >= 60)
+            for row in rows_to_insert:
+                observation = np.insert(observation, row, self.previous_observation[row], axis=0) 
+
+		...
+		self.previous_observation = observation
+```
