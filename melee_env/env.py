@@ -4,21 +4,35 @@ from melee import enums
 import numpy as np
 import sys
 import time
-
+import code
 
 class MeleeEnv:
     def __init__(self, 
         iso_path,
         players,
-        fast_forward=False, 
+        ai_starts_game=True,
         blocking_input=True,
-        ai_starts_game=True):
+        port=51441,
+        fast_forward=False,
+        mute_game=False,
+        dsp_backend='Cubeb'
+
+        ):
 
         self.d = DolphinConfig()
         self.d.set_ff(fast_forward)
 
+        self.d.set_dsp_backend(dsp_backend)
+
+        if mute_game:
+            self.d.set_volume(0)
+        else:
+            self.d.set_volume(25)
+
         self.iso_path = iso_path
         self.players = players
+        self.slippi_port=port
+        self.fast_forward = fast_forward
 
         # inform other players of other players
         # for player in self.players:
@@ -45,7 +59,8 @@ class MeleeEnv:
             path=str(self.d.slippi_bin_path),
             dolphin_home_path=dolphin_home_path,
             blocking_input=self.blocking_input,
-            tmp_home_directory=True)
+            tmp_home_directory=True, 
+            slippi_port=self.slippi_port)
 
         # print(self.console.dolphin_home_path)  # add to logging later
         # Configure Dolphin for the correct controller setup, add controllers
@@ -53,12 +68,12 @@ class MeleeEnv:
 
         for i in range(len(self.players)):
             curr_player = self.players[i]
-            if curr_player.agent_type == "HMN":
+            if curr_player.agent_type == 'HMN':
                 self.d.set_controller_type(i+1, enums.ControllerType.GCN_ADAPTER)
                 curr_player.controller = melee.Controller(console=self.console, port=i+1, type=melee.ControllerType.GCN_ADAPTER)
                 curr_player.port = i+1
                 human_detected = True
-            elif curr_player.agent_type in ["AI", "CPU"]:
+            elif curr_player.agent_type in ['AI', 'CPU']:
                 self.d.set_controller_type(i+1, enums.ControllerType.STANDARD)
                 curr_player.controller = melee.Controller(console=self.console, port=i+1)
                 self.menu_control_agent = i
@@ -81,34 +96,41 @@ class MeleeEnv:
         [player.controller.connect() for player in self.players if player is not None]
 
         self.gamestate = self.console.step()
- 
+
+    def _force_release(self):
+        # ensure that agents don't act up during menu operations
+        for i in range(len(self.players)):
+            if self.players[i].agent_type == 'AI' and i != self.menu_control_agent:
+                self.players[i].controller.release_all()
+
     def setup(self, stage):
         for player in self.players:
             player.defeated = False
-            
+        
         while True:
             self.gamestate = self.console.step()
+            
             if self.gamestate.menu_state is melee.Menu.CHARACTER_SELECT:
                 for i in range(len(self.players)):
-                    if self.players[i].agent_type == "AI":
+                    if self.players[i].agent_type == 'AI':
                         melee.MenuHelper.choose_character(
                             character=self.players[i].character,
                             gamestate=self.gamestate,
                             controller=self.players[i].controller,
-                            costume=i,
                             swag=False,
                             start=self.players[i].press_start)
-                    if self.players[i].agent_type == "CPU":
+
+                    if self.players[i].agent_type == 'CPU':
                         melee.MenuHelper.choose_character(
                             character=self.players[i].character,
                             gamestate=self.gamestate,
                             controller=self.players[i].controller,
-                            costume=i,
                             swag=False,
                             cpu_level=self.players[i].lvl,
                             start=self.players[i].press_start)  
 
             elif self.gamestate.menu_state is melee.Menu.STAGE_SELECT:
+                self._force_release()
                 melee.MenuHelper.choose_stage(
                     stage=stage,
                     gamestate=self.gamestate,
@@ -118,6 +140,7 @@ class MeleeEnv:
                 return self.gamestate, False  # game is not done on start
                 
             else:
+                self._force_release()
                 melee.MenuHelper.choose_versus_mode(self.gamestate, self.players[self.menu_control_agent].controller)
 
     def step(self):

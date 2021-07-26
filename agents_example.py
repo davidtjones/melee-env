@@ -9,9 +9,9 @@ parser.add_argument("--iso", default=None, type=str,
 
 args = parser.parse_args()
 
-players = [Rest(), NOOP(enums.Character.FOX)]
+players = [Rest(), Shine(), Random(enums.Character.FALCO), CPU(enums.Character.LINK, 8)]
 
-env = MeleeEnv(args.iso, players, fast_forward=True)
+env = MeleeEnv(args.iso, players)
 
 episodes = 10; reward = 0
 env.start()

@@ -10,8 +10,6 @@ import shutil
 import time
 import signal
 from zipfile import ZipFile
-import code
-
 
 
 class DolphinConfig:
@@ -113,6 +111,29 @@ class DolphinConfig:
 
         return
 
+    def set_dsp_backend(self, backend):
+        if backend in ['Cubeb', 'ALSA', 'Pulse', 'OpenAL']:    
+            config = configparser.ConfigParser()
+            config.readfp(open(self.config_path))
+            config['DSP']['backend'] = backend
+            with open(str(self.config_path), 'w') as outfile:
+                config.write(outfile)
+        else:
+            raise ValueError(f"Volume backend not supported: {config['DSP']['backend']}")
+
+
+    def set_volume(self, level):
+        config = configparser.ConfigParser()
+        config.readfp(open(self.config_path))
+        if config['DSP']['backend'] not in ['Cubeb', 'OpenAL']:
+            raise ValueError(f"Volume backend not supported: {config['DSP']['backend']}, please adjust volume manually")
+        else:
+            config['DSP']['volume'] = str(level)
+
+        with open(str(self.config_path), 'w') as outfile:
+            config.write(outfile)
+
+
     def set_center_p2_hud(self, enable=True):
         """Edit GALE01r2.ini to enable/disable centered P2"""
         with open(str(self.slippi_gecko_ini_path), 'r') as f:
@@ -154,7 +175,6 @@ class DolphinConfig:
         return
 
     # Initial Configuration and Installation methods below #
-
     def _download_file(self, url):
         local_filename = url.split('/')[-1]
         # NOTE the stream=True parameter below
@@ -236,7 +256,6 @@ class DolphinConfig:
         slippi_game_path.unlink()
 
         
-
     def apply_gecko_codes(self, install_path):
         # get most up-to-date codes:
         gale01r2_url = "https://raw.githubusercontent.com/altf4/slippi-ssbm-asm/libmelee/Output/Netplay/GALE01r2.ini"
