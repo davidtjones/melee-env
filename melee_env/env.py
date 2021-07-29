@@ -1,10 +1,13 @@
-from melee_env.dconfig import DolphinConfig
-import melee
-from melee import enums
-import numpy as np
 import sys
 import time
+import logging
+import numpy as np
+import melee
+from melee import enums
+from melee_env.dconfig import DolphinConfig
+
 import code
+
 
 class MeleeEnv:
     def __init__(self, 
@@ -15,8 +18,8 @@ class MeleeEnv:
         port=51441,
         fast_forward=False,
         mute_game=False,
-        dsp_backend='Cubeb'
-
+        dsp_backend='Cubeb',
+        logging_enabled=True
         ):
 
         self.d = DolphinConfig()
@@ -34,10 +37,6 @@ class MeleeEnv:
         self.slippi_port=port
         self.fast_forward = fast_forward
 
-        # inform other players of other players
-        # for player in self.players:
-        #     player.set_player_keys(len(self.players))
-        
         if len(self.players) == 2:
             self.d.set_center_p2_hud(True)
         else:
@@ -48,6 +47,30 @@ class MeleeEnv:
 
         self.gamestate = None
 
+        self.logging_enabled = logging_enabled
+        if self.logging_enabled:
+            self.logger = logging.getLogger(f'env_{self.slippi_port}')
+            self.logger.setLevel(logging.DEBUG)
+            fh = logging.FileHandler(f'logs/env_{self.slippi_port}.log')
+            fh.setLevel(logging.DEBUG)
+            self.logger.addHandler(fh)
+            self.logger.info(f"Starting melee-env on port {self.slippi_port}")
+
+    def log(self, level, msg):
+        if self.logging_enabled:
+            if level == "INFO":
+                self.logger.info(msg)
+            elif level == "WARN":
+                self.loggeer.warning(msg)
+            elif level == "ERROR":
+                self.logger.error(msg)
+            elif level == "DEBUG":
+                self.logger.debug(msg)
+            elif level == "CRITICAL":
+                self.logger.critical(msg)
+            else:
+                raise ValueError(f"Invalid logging option {level}")
+        return
 
     def start(self):
         if sys.platform == "linux":
@@ -62,7 +85,9 @@ class MeleeEnv:
             tmp_home_directory=True, 
             slippi_port=self.slippi_port)
 
-        # print(self.console.dolphin_home_path)  # add to logging later
+        self.run_dir = self.console.dolphin_home_path  # add to logging later
+        self.log("INFO", f"Created environment at {self.run_dir}")
+
         # Configure Dolphin for the correct controller setup, add controllers
         human_detected = False
 
@@ -78,7 +103,7 @@ class MeleeEnv:
                 curr_player.controller = melee.Controller(console=self.console, port=i+1)
                 self.menu_control_agent = i
                 curr_player.port = i+1 
-            else:  # no player
+            else:  # no player - this doesn't seem to work properly
                 self.d.set_controller_type(i+1, enums.ControllerType.UNPLUGGED)
             
         if self.ai_starts_game and not human_detected:
@@ -103,10 +128,7 @@ class MeleeEnv:
             if self.players[i].agent_type == 'AI' and i != self.menu_control_agent:
                 self.players[i].controller.release_all()
 
-    def setup(self, stage):
-        for player in self.players:
-            player.defeated = False
-        
+    def setup(self, stage):      
         while True:
             self.gamestate = self.console.step()
             
@@ -150,12 +172,3 @@ class MeleeEnv:
         if self.gamestate.menu_state in [melee.Menu.IN_GAME, melee.Menu.SUDDEN_DEATH]:
             self.gamestate = self.console.step()
         return self.gamestate, done
-
-
-    def close(self):
-        for t, c in self.controllers.items():
-            c.disconnect()
-        self.observation_space._reset()
-        self.gamestate = None
-        self.console.stop()
-        time.sleep(2) 

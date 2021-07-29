@@ -255,7 +255,6 @@ class DolphinConfig:
         # Cleanup - Delete executable
         slippi_game_path.unlink()
 
-        
     def apply_gecko_codes(self, install_path):
         # get most up-to-date codes:
         gale01r2_url = "https://raw.githubusercontent.com/altf4/slippi-ssbm-asm/libmelee/Output/Netplay/GALE01r2.ini"
