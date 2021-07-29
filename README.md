@@ -7,7 +7,6 @@ melee-env wraps the fantastic [libmelee](https://github.com/altf4/libmelee) as a
 from melee import enums
 from melee_env.env import MeleeEnv
 from melee_env.agents.basic import *
-import argparse
 
 players = [Rest(), NOOP(enums.Character.FOX)]
 
