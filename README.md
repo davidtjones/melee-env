@@ -12,10 +12,9 @@ players = [Rest(), NOOP(enums.Character.FOX)]
 
 env = MeleeEnv('path/to/iso', players, fast_forward=True)
 
-episodes = 10; reward = 0
 env.start()
 
-for episode in range(episodes):
+for episode in range(10):
     gamestate, done = env.setup(enums.Stage.BATTLEFIELD)
     while not done:
         for i in range(len(players)):

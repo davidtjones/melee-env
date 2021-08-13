@@ -5,8 +5,7 @@ import numpy as np
 import melee
 from melee import enums
 from melee_env.dconfig import DolphinConfig
-
-import code
+from pathlib import Path
 
 
 class MeleeEnv:
@@ -49,6 +48,7 @@ class MeleeEnv:
 
         self.logging_enabled = logging_enabled
         if self.logging_enabled:
+            Path("./logs").mkdir(exist_ok=True, parents=True)
             self.logger = logging.getLogger(f'env_{self.slippi_port}')
             self.logger.setLevel(logging.DEBUG)
             fh = logging.FileHandler(f'logs/env_{self.slippi_port}.log')
